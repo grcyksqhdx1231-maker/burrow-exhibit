@@ -181,49 +181,41 @@
   </div>
 
   <script>
-    // ✅ 自动识别 GitHub Project Pages 的 base 路径
-    // - 如果是 https://xxx.github.io/burrow-exhibit/  => base = "/burrow-exhibit/"
-    // - 如果是 https://xxx.github.io/              => base = "/"
-    // - 如果本地 file://                          => base = "./"
+    // ⚠️ 保留 detectBase，但不再用于跳转
     function detectBase() {
       if (location.protocol === 'file:') return './';
       const seg = location.pathname.split('/').filter(Boolean);
-      // Project Pages 通常第一个段就是 repo 名
-      // 例如 /burrow-exhibit/index.html => seg[0] = 'burrow-exhibit'
       if (seg.length > 0) return '/' + seg[0] + '/';
       return '/';
     }
-
+  
     const BASE = detectBase();
-
-    // ✅ 统一跳转函数（避免再写错路径）
+  
+    // ✅ 关键修改：跳转永远使用相对路径
     function go(pathAndQuery) {
       const p = String(pathAndQuery || '').replace(/^\/+/, '');
-      location.href = BASE + p;
+      window.location.href = './' + p;
     }
-
-    // ✅ 背景图也自动走 base（避免部署后找不到）
+  
+    // 背景图仍然走 BASE（这个没问题）
     (function fixBgPath(){
       const bg = document.getElementById('startBg');
       const raw = bg.getAttribute('src') || '';
-      // 只处理相对路径资源（不动 http/data/blob）
       if (/^(https?:|data:|blob:)/i.test(raw)) return;
       const cleaned = raw.replace(/^\.\/+/, '').replace(/^\/+/, '');
       bg.src = BASE + cleaned;
     })();
-
+  
     document.getElementById("startBtn").addEventListener("click", () => {
       go("macro_meso.html");
-      // 如果你希望默认直接进 macro（带 query），用下面这句替换上面那句：
-      // go("macro_meso.html?view=macro");
     });
-
+  
     window.addEventListener("keydown", (e) => {
       if(e.key === "Enter") {
         go("macro_meso.html");
-        // 同上：也可以换成 go("macro_meso.html?view=macro");
       }
     });
   </script>
+
 </body>
 </html>
