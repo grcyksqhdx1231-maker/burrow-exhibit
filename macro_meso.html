@@ -733,57 +733,50 @@
     tideSpeed: 1,
     tideMinHeight: 10,
     tideMaxHeight: 60,
-
-    highTideLabelImage: null,
-    midTideLabelImage: null,
-    lowTideLabelImage: null,
+  
+    // ✅ 分区标签图（你图片2里有：高潮滩/中潮滩/低潮滩）
+    highTideLabelImage: './图片2/高潮滩.png',
+    midTideLabelImage:  './图片2/中潮滩.png',
+    lowTideLabelImage:  './图片2/低潮滩.png',
     labelScale: 1,
-
-    reedImage: null,
-    spartinaImage: null,
-    reedTooltipImage: null,
-    spartinaTooltipImage: null,
-
+  
+    // ✅ 植物图（你图片2里有：芦苇/互花米草）
+    reedImage: './图片2/芦苇.png',
+    spartinaImage: './图片2/互花米草.png',
+  
+    // ✅ Tooltip 用的介绍图（你图片2里有：芦苇介绍/互花米草介绍）
+    reedTooltipImage: './图片2/芦苇介绍.png',
+    spartinaTooltipImage: './图片2/互花米草介绍.png',
+  
     reedDensity: 150,
     spartinaDensity: 150,
     reedBaseSize: 0.6,
     spartinaBaseSize: 0.6,
-
+  
     reedTooltipSize: { width: 300, height: 200 },
     spartinaTooltipSize: { width: 300, height: 200 },
-
+  
+    // ✅ 四种蟹 hover 弹窗的圆形图片（来自 图片2 文件夹的 jpg）
     customCrabs: {
-      [CrabType.UCA]: { name: 'Uca arcuata', introImage: null },
-      [CrabType.SESARMA]: { name: 'Sesarma dehaani', introImage: null },
-      [CrabType.HELICE]: { name: 'Helice tridens', introImage: null },
-      [CrabType.MACRO]: { name: 'Macrophthalmus japonicus', introImage: null },
+      [CrabType.UCA]: {
+        name: 'Uca arcuata',
+        introImage: './图片2/Uca arcuata孤边招潮蟹.jpg'
+      },
+      [CrabType.SESARMA]: {
+        name: 'Sesarma dehaani',
+        introImage: './图片2/Sesarma dehaani无齿相手蟹.jpg'
+      },
+      [CrabType.HELICE]: {
+        name: 'Helice tridens',
+        introImage: './图片2/Helice tridens 天津厚蟹.jpg'
+      },
+      [CrabType.MACRO]: {
+        name: 'Macrophthalmus japonicus',
+        introImage: './图片2/Macrophthalmus japonicus日本大眼蟹.jpg'
+      },
     }
   };
 
-  function safeParseJSON(s){ try{ return JSON.parse(s); } catch(e){ return null; } }
-  function loadSettings(){
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? safeParseJSON(raw) : null;
-    if(!parsed) return structuredClone(DEFAULT_SETTINGS);
-    const merged = { ...structuredClone(DEFAULT_SETTINGS), ...parsed };
-    merged.customCrabs = { ...structuredClone(DEFAULT_SETTINGS).customCrabs, ...(parsed.customCrabs || {}) };
-    return merged;
-  }
-  function saveSettings(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
-
-  let settings = loadSettings();
-
-  function loadFilters(){
-    const raw = localStorage.getItem(FILTER_KEY);
-    const parsed = raw ? safeParseJSON(raw) : null;
-    if(parsed && typeof parsed === 'object') return parsed;
-    return {
-      [CrabType.SESARMA]: true,
-      [CrabType.UCA]: true,
-      [CrabType.HELICE]: true,
-      [CrabType.MACRO]: true,
-    };
-  }
   function saveFilters(f){ localStorage.setItem(FILTER_KEY, JSON.stringify(f)); }
   let filters = loadFilters();
 
