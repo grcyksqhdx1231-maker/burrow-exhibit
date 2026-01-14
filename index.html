@@ -32,18 +32,17 @@
       align-items:center;
       justify-content:center;
       pointer-events:none;
-      padding: 18px; /* ✅ 给 SVG 留“安全边距”，防止贴边超出 */
+      padding: 18px;
       box-sizing: border-box;
     }
     .bg img{
       width: 100%;
       height: 100%;
-      object-fit: contain;   /* ✅ 关键：完整显示 */
+      object-fit: contain;
       object-position: center;
       opacity: 1;
     }
 
-    /* ✅ 轻微暗角，让按钮/文字更清晰（不影响看全图） */
     .vignette{
       position:absolute;
       inset:0;
@@ -53,7 +52,6 @@
         linear-gradient(to bottom, rgba(0,0,0,.28), rgba(0,0,0,0) 22%, rgba(0,0,0,0) 70%, rgba(0,0,0,.35));
     }
 
-    /* 顶部信息 */
     .topbar{
       position:absolute;
       top:14px;
@@ -87,7 +85,6 @@
       line-height:1.3;
     }
 
-    /* Start 区域 */
     .cta{
       position:absolute;
       right:18px;
@@ -142,7 +139,6 @@
       transform: translateY(1px);
     }
 
-    /* 小屏：按钮横向铺满 */
     @media (max-width: 520px){
       .cta{ left:14px; right:14px; align-items:stretch; }
       .btn{ justify-content:center; width:100%; }
@@ -154,7 +150,8 @@
 <body>
   <div class="wrap">
     <div class="bg">
-      <img src="开始页.svg" alt="Start Screen" />
+      <!-- ✅ 这里 src 会在 JS 里自动补 base 前缀 -->
+      <img id="startBg" src="开始页.svg" alt="Start Screen" />
     </div>
     <div class="vignette"></div>
 
@@ -184,13 +181,47 @@
   </div>
 
   <script>
+    // ✅ 自动识别 GitHub Project Pages 的 base 路径
+    // - 如果是 https://xxx.github.io/burrow-exhibit/  => base = "/burrow-exhibit/"
+    // - 如果是 https://xxx.github.io/              => base = "/"
+    // - 如果本地 file://                          => base = "./"
+    function detectBase() {
+      if (location.protocol === 'file:') return './';
+      const seg = location.pathname.split('/').filter(Boolean);
+      // Project Pages 通常第一个段就是 repo 名
+      // 例如 /burrow-exhibit/index.html => seg[0] = 'burrow-exhibit'
+      if (seg.length > 0) return '/' + seg[0] + '/';
+      return '/';
+    }
+
+    const BASE = detectBase();
+
+    // ✅ 统一跳转函数（避免再写错路径）
+    function go(pathAndQuery) {
+      const p = String(pathAndQuery || '').replace(/^\/+/, '');
+      location.href = BASE + p;
+    }
+
+    // ✅ 背景图也自动走 base（避免部署后找不到）
+    (function fixBgPath(){
+      const bg = document.getElementById('startBg');
+      const raw = bg.getAttribute('src') || '';
+      // 只处理相对路径资源（不动 http/data/blob）
+      if (/^(https?:|data:|blob:)/i.test(raw)) return;
+      const cleaned = raw.replace(/^\.\/+/, '').replace(/^\/+/, '');
+      bg.src = BASE + cleaned;
+    })();
+
     document.getElementById("startBtn").addEventListener("click", () => {
-      window.location.href = "/burrow-exhibit/macro_meso.html";
+      go("macro_meso.html");
+      // 如果你希望默认直接进 macro（带 query），用下面这句替换上面那句：
+      // go("macro_meso.html?view=macro");
     });
 
     window.addEventListener("keydown", (e) => {
       if(e.key === "Enter") {
-        window.location.href = "/burrow-exhibit/macro_meso.html";
+        go("macro_meso.html");
+        // 同上：也可以换成 go("macro_meso.html?view=macro");
       }
     });
   </script>
