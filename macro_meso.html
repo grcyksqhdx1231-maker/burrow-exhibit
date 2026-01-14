@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Fengxian Shore — Macro + Meso</title>
+<style>
+/* ===== 样式保持你原版，不删 ===== */
+html,body{margin:0;height:100%;background:#111;font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",Arial;}
+.app{width:100vw;height:100vh;position:relative;overflow:hidden}
+.view{position:absolute;inset:0}
+.hidden{display:none}
+.shown{display:block}
+.dot{position:absolute;border-radius:50%;cursor:pointer}
+.dot[data-type="Uca arcuata"]{background:#2563eb}
+.dot[data-type="Sesarma dehaani"]{background:#b91c1c}
+.dot[data-type="Helice tridens"]{background:#111}
+.dot[data-type="Macrophthalmus japonicus"]{background:#15803d}
+.hole-pop{position:fixed;z-index:9999;display:none;pointer-events:none}
+.hole-pop .lens{width:220px;height:220px;border-radius:50%;overflow:hidden;background:#000}
+.hole-pop img{width:100%;height:100%;object-fit:cover}
+</style>
+</head>
+
+<body>
+<div class="app">
+  <section id="macro" class="view shown">
+    <button id="toMesoBtn">Go Meso</button>
+  </section>
+
+  <section id="meso" class="view hidden">
+    <button id="mesoBackBtn">Back</button>
+    <div id="mesoDots"></div>
+  </section>
+
+  <div class="hole-pop" id="holePop">
+    <div class="lens">
+      <img id="holePopImg" />
+    </div>
+    <div id="holePopSci"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+
+const CrabType = {
+  UCA: 'Uca arcuata',
+  SESARMA: 'Sesarma dehaani',
+  HELICE: 'Helice tridens',
+  MACRO: 'Macrophthalmus japonicus'
+};
+
+const settings = {
+  customCrabs: {
+    [CrabType.UCA]: {
+      name: 'Uca arcuata',
+      introImage: './图片2/Uca arcuata弧边招潮蟹.jpg'
+    },
+    [CrabType.SESARMA]: {
+      name: 'Sesarma dehaani',
+      introImage: './图片2/Sesarma dehaani无齿相手蟹.jpg'
+    },
+    [CrabType.HELICE]: {
+      name: 'Helice tridens',
+      introImage: './图片2/Helice tridens 天津厚蟹.jpg'
+    },
+    [CrabType.MACRO]: {
+      name: 'Macrophthalmus japonicus',
+      introImage: './图片2/Macrophthalmus japonicus日本大眼蟹.jpg'
+    }
+  }
+};
+
+const macro = document.getElementById('macro');
+const meso = document.getElementById('meso');
+const toMesoBtn = document.getElementById('toMesoBtn');
+const mesoBackBtn = document.getElementById('mesoBackBtn');
+const mesoDots = document.getElementById('mesoDots');
+
+const holePop = document.getElementById('holePop');
+const holePopImg = document.getElementById('holePopImg');
+const holePopSci = document.getElementById('holePopSci');
+
+toMesoBtn.onclick = () => {
+  macro.classList.add('hidden');
+  meso.classList.remove('hidden');
+};
+
+mesoBackBtn.onclick = () => {
+  meso.classList.add('hidden');
+  macro.classList.remove('hidden');
+};
+
+const dots = [
+  {x:20,y:20,type:CrabType.SESARMA,size:6},
+  {x:40,y:40,type:CrabType.UCA,size:6},
+  {x:60,y:60,type:CrabType.HELICE,size:6},
+  {x:80,y:80,type:CrabType.MACRO,size:6},
+];
+
+function renderDots(){
+  mesoDots.innerHTML = '';
+  dots.forEach(d=>{
+    const el = document.createElement('div');
+    el.className = 'dot';
+    el.dataset.type = d.type;
+    el.style.left = d.x + '%';
+    el.style.top  = d.y + '%';
+    el.style.width = d.size+'px';
+    el.style.height= d.size+'px';
+
+    el.onmouseenter = e=>{
+      const cfg = settings.customCrabs[d.type];
+      const r = el.getBoundingClientRect();
+      holePop.style.display='block';
+      holePop.style.left = (r.left+r.width/2)+'px';
+      holePop.style.top  = (r.top-10)+'px';
+      holePopSci.textContent = d.type;
+      holePopImg.src = cfg.introImage;
+    };
+    el.onmouseleave = ()=>holePop.style.display='none';
+
+    el.onclick = ()=>{
+      window.location.href = `./micro.html?crab=${encodeURIComponent(d.type)}`;
+    };
+
+    mesoDots.appendChild(el);
+  });
+}
+
+renderDots();
+
+})();
+</script>
+</body>
+</html>
