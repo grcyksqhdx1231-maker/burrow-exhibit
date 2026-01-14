@@ -1,4 +1,4 @@
-<!doctype html>
+<!doctype html> 
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
@@ -370,12 +370,12 @@
       flex-direction:column;
       align-items:center;
       gap:10px;
-      min-width: 280px; /* ✅ 让长学名能装下 */
+      min-width: 280px;
       max-width: 320px;
     }
     .hole-pop .lens{
-      width: 220px;   /* ✅ bigger */
-      height: 220px;  /* ✅ bigger */
+      width: 220px;
+      height: 220px;
       border-radius: 999px;
       overflow:hidden;
       background:#000;
@@ -395,9 +395,9 @@
     .hole-pop .sci{
       width: 100%;
       text-align:center;
-      white-space: nowrap;     /* ✅ 单行 */
-      overflow: hidden;        /* ✅ 不溢出 */
-      text-overflow: ellipsis; /* ✅ 超长省略 */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .hole-pop .name{
       font-weight:950;
@@ -593,7 +593,6 @@
       </div>
 
       <div class="top-actions">
-        <!-- ✅ legend 文案改为学名（同时保留 dataset 用于过滤） -->
         <div class="legend" id="legend">
           <div class="item" data-k="Sesarma dehaani" title="Toggle Sesarma dehaani">
             <span class="sw" style="background: var(--c-sesarma)"></span><span class="tx">Sesarma dehaani</span>
@@ -741,11 +740,9 @@
   const asset = (p) => encodeURI(BASE + p.replace(/^\.\//, ''));
 
   // ✅ 第一次打开强制清旧版本（只清旧 key，不动别的站点数据）
-  // 如果你确认不需要这段，也可以删掉，但它能把“看起来还是旧样子”一次性解决
   try{
     Object.keys(localStorage).forEach(k=>{
       if(k.startsWith('crab_burrow_settings_') || k.startsWith('crab_burrow_filters_')){
-        // 只清不是当前版本的
         if(k !== STORAGE_KEY && k !== FILTER_KEY) localStorage.removeItem(k);
       }
     });
@@ -758,17 +755,14 @@
     tideMinHeight: 10,
     tideMaxHeight: 60,
 
-    // ✅ 分区标签图
     highTideLabelImage: asset('图片2/高潮滩.png'),
     midTideLabelImage:  asset('图片2/中潮滩.png'),
     lowTideLabelImage:  asset('图片2/低潮滩.png'),
     labelScale: 1,
 
-    // ✅ 植物图
     reedImage: asset('图片2/芦苇.png'),
     spartinaImage: asset('图片2/互花米草.png'),
 
-    // ✅ Tooltip 图
     reedTooltipImage: asset('图片2/芦苇介绍.png'),
     spartinaTooltipImage: asset('图片2/互花米草介绍.png'),
 
@@ -780,9 +774,6 @@
     reedTooltipSize: { width: 300, height: 200 },
     spartinaTooltipSize: { width: 300, height: 200 },
 
-    // ✅ 螃蟹 hover 图
-    // !!! 强烈建议：你把文件名里的空格去掉（比如改成 Helice_tridens_天津厚蟹.jpg）
-    // 但就算你不改，这里 encodeURI 也能大幅提高成功率
     customCrabs: {
       [CrabType.UCA]: {
         name: 'Uca arcuata',
@@ -827,11 +818,8 @@
       [CrabType.MACRO]: true,
     };
   }
-  function saveFilters(f){ localStorage.setItem(FILTER_KEY, JSON.stringify(f)); }
-  let filters = loadFilters();
 
-  // ✅ 后面你的原代码保持不动，从这里继续即可……
-
+  // ✅✅✅ 这里：只保留一份 saveFilters + filters（修复你报错的根源）
   function saveFilters(f){ localStorage.setItem(FILTER_KEY, JSON.stringify(f)); }
   let filters = loadFilters();
 
@@ -1202,11 +1190,7 @@
     requestAnimationFrame(macroRenderLoop);
   }
 
-  // =========================
-  // ✅ MESO distribution: top dense (reed) -> bottom sparse (spartina)
-  // =========================
   function biasedY(zoneStart, zoneHeight, expToTop = 1.9){
-    // exp>1: 越偏向 zoneStart（越靠上）
     return zoneStart + Math.pow(Math.random(), expToTop) * zoneHeight;
   }
   function generateZoneItems(count, zoneStart, zoneHeight, type, expToTop, densityMod=1){
@@ -1230,7 +1214,6 @@
   let mesoRect = null;
 
   function genMeso(){
-    // ✅ 数量梯度：上多下少；同时每个区内部也“越靠上越密”
     const highDots = generateZoneItems(240, 0, 33.3, 'dot', 1.6, 1.25)
       .map(d => ({...d, type: CrabType.SESARMA, size: 4}));
 
@@ -1242,7 +1225,6 @@
 
     mesoDotData = [...highDots, ...midDots, ...lowDots];
 
-    // plants 也做一点上密下疏（让画面一致）
     const highPlants = generateZoneItems(130, 0, 33.3, 'plant', 1.5, 1.15).map(p => ({...p, plantType: PlantType.REED}));
     const midReeds   = generateZoneItems(70, 33.3, 33.3, 'plant', 1.7, 0.95).map(p => ({...p, plantType: PlantType.REED}));
     const midSp      = generateZoneItems(70, 33.3, 33.3, 'plant', 1.9, 0.85).map(p => ({...p, plantType: PlantType.SPARTINA}));
