@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Burrow Indexer (Route B)</title>
+<style>
+  html,body{height:100%;margin:0;background:#0b0b0b;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC","Microsoft YaHei",Arial;color:#fff;}
+  .wrap{position:fixed;inset:0;display:grid;grid-template-columns: 1fr 360px;}
+  .stage{position:relative;overflow:hidden;background:#000;}
+  .panel{border-left:1px solid rgba(255,255,255,.12);padding:16px;background:rgba(255,255,255,.05);backdrop-filter: blur(8px);}
+  .row{margin:10px 0;display:flex;gap:8px;align-items:center;}
+  input,button,textarea{font:inherit;}
+  input,textarea{
+    width:100%;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,.18);
+    background:rgba(0,0,0,.35);
+    color:#fff;
+    padding:10px 12px;
+    outline:none;
+  }
+  button{
+    border-radius:999px;
+    border:1px solid rgba(255,255,255,.18);
+    background:rgba(255,255,255,.12);
+    color:#fff;
+    padding:10px 14px;
+    cursor:pointer;
+  }
+  button:hover{background:rgba(255,255,255,.18);}
+  .hint{font-size:12px;line-height:1.55;color:rgba(255,255,255,.72)}
+  .kpi{display:grid;grid-template-columns: 1fr 1fr;gap:10px;margin-top:10px;}
+  .card{border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:10px;background:rgba(0,0,0,.25);}
+  .num{font-weight:800;font-size:18px}
+  .lab{font-size:12px;color:rgba(255,255,255,.65)}
+  .svgHost{position:absolute;left:0;top:0;transform-origin:0 0;}
+  .hl{
+    position:absolute;
+    border:2px solid rgba(0,255,255,.9);
+    box-shadow: 0 0 0 99999px rgba(0,0,0,.25) inset;
+    pointer-events:none;
+  }
+  .toast{
+    position:absolute;left:16px;bottom:16px;
+    background:rgba(255,255,255,.10);
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:14px;
+    padding:10px 12px;
+    font-size:12px;
+    max-width:min(560px, calc(100vw - 32px));
+  }
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="stage" id="stage">
+    <div class="svgHost" id="svgHost"></div>
+    <div class="hl" id="hl" style="display:none"></div>
+    <div class="toast" id="toast">
+      1) 点击总图里某个 burrow（任意形状/路径）<br/>
+      2) 右侧输入它的 Key（比如：<code>弧边招潮蟹1</code>）<br/>
+      3) 点 <b>Add / Update</b> 保存 bbox。重复 28 次。<br/>
+      最后点 <b>Export JSON</b> 下载 <code>burrow_index.json</code>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin:0 0 10px 0;">Burrow Indexer</h2>
+    <div class="hint">
+      这个工具会把你点击到的“那一坨 burrow”自动上溯到一个合适的父级（g/path/group），读取它的 <code>getBBox()</code>，
+      形成 Key → {x,y,w,h} 的索引表。<br/>
+      ✅ 不需要 SVG 内有 id/title，也不需要上传大文件给我。
+    </div>
+
+    <div class="kpi">
+      <div class="card"><div class="num" id="kCount">0</div><div class="lab">Saved keys</div></div>
+      <div class="card"><div class="num" id="kLast">—</div><div class="lab">Last key</div></div>
+    </div>
+
+    <div class="row" style="margin-top:14px;">
+      <input id="keyInput" placeholder="Key，例如：弧边招潮蟹1 / 日本大眼蟹3 / 天津厚蟹6 ..." />
+    </div>
+
+    <div class="row">
+      <button id="addBtn">Add / Update</button>
+      <button id="delBtn">Delete</button>
+    </div>
+
+    <div class="row">
+      <button id="exportBtn">Export JSON</button>
+      <button id="copyBtn">Copy JSON</button>
+    </div>
+
+    <div class="row">
+      <button id="clearBtn" style="border-color:rgba(255,80,80,.35);">Clear All</button>
+    </div>
+
+    <div class="hint" style="margin-top:10px;">
+      <b>小技巧：</b>如果你发现点击很难选中 burrow，放大浏览器或把总图临时放大（Ctrl+滚轮）。<br/>
+      <b>重要：</b>请确保你用的是本地 server 打开（VSCode Live Server / python http.server）。
+    </div>
+
+    <div class="row" style="margin-top:12px;">
+      <textarea id="jsonPreview" rows="10" spellcheck="false"></textarea>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const MASTER_SRC = "grain_vector_3panel.svg";
+  const STORAGE_KEY = "burrow_index_v1";
+
+  const stage = document.getElementById('stage');
+  const svgHost = document.getElementById('svgHost');
+  const hl = document.getElementById('hl');
+  const toast = document.getElementById('toast');
+
+  const keyInput = document.getElementById('keyInput');
+  const addBtn = document.getElementById('addBtn');
+  const delBtn = document.getElementById('delBtn');
+  const exportBtn = document.getElementById('exportBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const jsonPreview = document.getElementById('jsonPreview');
+
+  const kCount = document.getElementById('kCount');
+  const kLast = document.getElementById('kLast');
+
+  let index = loadIndex();
+  let masterSvgEl = null;
+  let lastPicked = null; // {el, bbox}
+
+  function loadIndex(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    }catch(e){
+      return {};
+    }
+  }
+  function saveIndex(){
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(index));
+  }
+  function refreshUI(){
+    const keys = Object.keys(index);
+    kCount.textContent = String(keys.length);
+    jsonPreview.value = JSON.stringify(index, null, 2);
+  }
+
+  function downloadText(filename, text){
+    const blob = new Blob([text], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 500);
+  }
+
+  // Find a reasonable "burrow root" from clicked target:
+  // climb up until:
+  // - element is <g> or <path> but not defs/clipPath/mask
+  // - bbox is not tiny
+  function isBadContainer(el){
+    const tag = el.tagName?.toLowerCase();
+    return tag === 'defs' || tag === 'clippath' || tag === 'mask' || tag === 'symbol';
+  }
+
+  function pickBurrowRoot(target){
+    if(!target) return null;
+    let el = target;
+
+    // If clicked on <svg> itself, ignore
+    if(el.tagName && el.tagName.toLowerCase() === 'svg') return null;
+
+    // Climb up max 10 levels
+    for(let i=0;i<10;i++){
+      if(!el || !el.tagName) break;
+      const tag = el.tagName.toLowerCase();
+      if(isBadContainer(el)) { el = el.parentNode; continue; }
+
+      // prefer <g>
+      if(tag === 'g'){
+        const bb = safeBBox(el);
+        if(bb && bb.width > 6 && bb.height > 6) return {el, bb};
+      }
+
+      // fallback: if it's a path with decent bbox, accept
+      if(tag === 'path' || tag === 'polygon' || tag === 'rect' || tag === 'circle' || tag === 'ellipse'){
+        const bb = safeBBox(el);
+        if(bb && bb.width > 6 && bb.height > 6) return {el, bb};
+      }
+
+      el = el.parentNode;
+    }
+    return null;
+  }
+
+  function safeBBox(el){
+    try{
+      if(!el.getBBox) return null;
+      return el.getBBox();
+    }catch(e){
+      return null;
+    }
+  }
+
+  function showHighlight(bb){
+    if(!bb) { hl.style.display='none'; return; }
+    // bb is in SVG coords; we need transform to screen coords
+    // easiest: use getBoundingClientRect of element itself
+    if(!lastPicked?.el) return;
+    const r = lastPicked.el.getBoundingClientRect();
+    hl.style.display = 'block';
+    hl.style.left = r.left + 'px';
+    hl.style.top = r.top + 'px';
+    hl.style.width = r.width + 'px';
+    hl.style.height = r.height + 'px';
+  }
+
+  async function loadMaster(){
+    const txt = await fetch(MASTER_SRC).then(r=>r.text());
+    svgHost.innerHTML = txt;
+    masterSvgEl = svgHost.querySelector('svg');
+    if(!masterSvgEl){
+      alert("Failed to load master SVG: no <svg> found.");
+      return;
+    }
+    // Make it fit stage width (simple scale)
+    fitMasterToStage();
+    window.addEventListener('resize', fitMasterToStage);
+
+    // click picking
+    masterSvgEl.addEventListener('click', (e)=>{
+      const t = e.target;
+      const picked = pickBurrowRoot(t);
+      if(!picked) return;
+      lastPicked = picked;
+      showHighlight(picked.bb);
+      toast.innerHTML = `Picked element: <code>${picked.el.tagName.toLowerCase()}</code> | bbox: <code>${picked.bb.x.toFixed(1)},${picked.bb.y.toFixed(1)},${picked.bb.width.toFixed(1)},${picked.bb.height.toFixed(1)}</code>`;
+    }, {passive:true});
+  }
+
+  function fitMasterToStage(){
+    if(!masterSvgEl) return;
+    const st = stage.getBoundingClientRect();
+    const vb = masterSvgEl.viewBox && masterSvgEl.viewBox.baseVal;
+    // if no viewBox, fallback to width/height
+    const w0 = vb ? vb.width : (masterSvgEl.getBBox ? masterSvgEl.getBBox().width : 1000);
+    const h0 = vb ? vb.height : (masterSvgEl.getBBox ? masterSvgEl.getBBox().height : 1000);
+    const scale = Math.min(st.width / w0, st.height / h0);
+    svgHost.style.transform = `translate(0px,0px) scale(${scale})`;
+  }
+
+  addBtn.addEventListener('click', ()=>{
+    const key = (keyInput.value || '').trim();
+    if(!key){ alert("Please input a Key first."); return; }
+    if(!lastPicked?.bb){ alert("Please click a burrow in the SVG first."); return; }
+    // store bbox in SVG coordinates (not screen)
+    index[key] = {
+      x: +lastPicked.bb.x.toFixed(3),
+      y: +lastPicked.bb.y.toFixed(3),
+      w: +lastPicked.bb.width.toFixed(3),
+      h: +lastPicked.bb.height.toFixed(3),
+    };
+    saveIndex();
+    kLast.textContent = key;
+    refreshUI();
+  });
+
+  delBtn.addEventListener('click', ()=>{
+    const key = (keyInput.value || '').trim();
+    if(!key){ alert("Input a Key to delete."); return; }
+    if(index[key]){
+      delete index[key];
+      saveIndex();
+      refreshUI();
+    }
+  });
+
+  clearBtn.addEventListener('click', ()=>{
+    if(!confirm("Clear ALL saved keys?")) return;
+    index = {};
+    saveIndex();
+    refreshUI();
+  });
+
+  exportBtn.addEventListener('click', ()=>{
+    downloadText('burrow_index.json', JSON.stringify(index, null, 2));
+  });
+
+  copyBtn.addEventListener('click', async ()=>{
+    try{
+      await navigator.clipboard.writeText(JSON.stringify(index, null, 2));
+      toast.textContent = "Copied JSON to clipboard.";
+    }catch(e){
+      alert("Copy failed (browser permission). Use Export JSON instead.");
+    }
+  });
+
+  refreshUI();
+  loadMaster();
+})();
+</script>
+</body>
+</html>

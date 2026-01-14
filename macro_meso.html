@@ -1,0 +1,1489 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fengxian Shore — Macro + Meso</title>
+  <style>
+    :root{
+      --bg-macro:#eefcfc;
+      --bg-meso:#fcfbf7;
+      --text:#111827;
+      --muted:#6b7280;
+      --card:#ffffff;
+      --border: rgba(0,0,0,.12);
+      --shadow: 0 16px 40px rgba(0,0,0,.12);
+      --pill: rgba(255,255,255,.85);
+      --pill-border: rgba(0,0,0,.14);
+
+      --high:#fef9c3;
+      --mid:#dcfce7;
+      --low:#d1fae5;
+
+      --c-uca:#2563eb;
+      --c-sesarma:#b91c1c;
+      --c-helice:#111827;
+      --c-macro:#15803d;
+    }
+
+    html,body{height:100%; margin:0; font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC","Microsoft YaHei",Arial; color:var(--text); background:#111;}
+    .app{width:100vw; height:100vh; position:relative; overflow:hidden;}
+    .view{position:absolute; inset:0; transition: opacity .7s ease; }
+    .hidden{opacity:0; pointer-events:none;}
+    .shown{opacity:1; pointer-events:auto;}
+
+    .pill{
+      background: var(--pill);
+      border:1px solid var(--pill-border);
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(6px);
+    }
+    .btn{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.92);
+      border-radius: 999px;
+      padding: 10px 14px;
+      cursor:pointer;
+      display:flex; align-items:center; gap:10px;
+      box-shadow: 0 10px 24px rgba(0,0,0,.10);
+      user-select:none;
+      transition: transform .12s ease, filter .12s ease;
+    }
+    .btn:hover{ transform: translateY(-1px); filter: brightness(1.01); }
+    .btn:active{ transform: translateY(0px); }
+    .btn .icon{width:18px; height:18px; display:inline-block;}
+    .btn.primary{ padding: 12px 16px; }
+    .btn.primary .label{font-weight:650; color:#374151; font-size:13px; line-height:1.2; max-width: 220px; text-align:left;}
+    .btn.ghost{ background: rgba(255,255,255,.78); }
+
+    .zone-lines .line{
+      position:absolute; left:0; right:0;
+      border-top: 1px dashed rgba(0,0,0,.25);
+      opacity:.55;
+      pointer-events:none;
+      z-index:10;
+    }
+    .zone-lines .l1{top:33.3%;}
+    .zone-lines .l2{top:66.6%;}
+
+    .zone-bands{
+      position:absolute; inset:0;
+      pointer-events:none;
+      z-index:5;
+      mix-blend-mode: multiply;
+    }
+    .zone-bands .band{
+      position:absolute; left:0; right:0;
+      opacity:.30;
+      filter: blur(0px);
+    }
+    .zone-bands .b1{ top:0; height:33.3%; background: linear-gradient(to bottom, rgba(254,249,195,.85), rgba(254,249,195,.20)); }
+    .zone-bands .b2{ top:33.3%; height:33.3%; background: linear-gradient(to bottom, rgba(220,252,231,.55), rgba(220,252,231,.18)); }
+    .zone-bands .b3{ top:66.6%; height:33.4%; background: linear-gradient(to bottom, rgba(209,250,229,.48), rgba(209,250,229,.18)); }
+
+    .zone-labels{
+      position:absolute;
+      left:18px;
+      top:0;
+      height:100%;
+      width:260px;
+      z-index:30;
+      pointer-events:none;
+    }
+    .zone-label{
+      position:absolute;
+      left:0;
+      transform: translateY(-50%);
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .zone-label .tag{
+      display:inline-flex;
+      align-items:center;
+      padding:10px 14px;
+      border-radius: 14px;
+      border:1px solid rgba(0,0,0,.10);
+      box-shadow: 0 10px 24px rgba(0,0,0,.08);
+      font-weight:650;
+      letter-spacing:.01em;
+      color: rgba(0,0,0,.70);
+      white-space:nowrap;
+      backdrop-filter: blur(4px);
+      background: rgba(255,255,255,.60);
+      transform-origin: left center;
+    }
+    .zone-label img{
+      width:200px; height:auto; object-fit:contain;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,.12));
+      transform-origin: left center;
+    }
+
+    #macro{ background: var(--bg-macro); cursor: default; }
+    #macro .sky{
+      position:absolute; inset:0;
+      background: linear-gradient(to bottom, #fff 0%, rgba(191,219,254,.18) 100%);
+      z-index:0;
+    }
+    #macro .haze{
+      position:absolute; inset:0;
+      background: radial-gradient(1200px 500px at 50% 90%, rgba(59,130,246,.09), transparent 60%);
+      z-index:1;
+      pointer-events:none;
+    }
+    #macro .top-right{
+      position:absolute; top:24px; right:24px;
+      display:flex; gap:14px;
+      z-index:40;
+      pointer-events:auto;
+    }
+    #macro .footer{
+      position:absolute; left:24px; bottom:24px;
+      max-width: 460px;
+      z-index:40;
+      pointer-events:none;
+      mix-blend-mode: multiply;
+      color: rgba(30,58,138,.55);
+    }
+    #macro .footer h2{margin:0 0 8px 0; font-weight:300; font-size:22px;}
+    #macro .footer p{margin:0; font-size:13px; line-height:1.5;}
+
+    #macro .dragHint{
+      position:absolute;
+      left:24px; top:24px;
+      z-index:40;
+      pointer-events:none;
+      color: rgba(30,58,138,.55);
+      font-size:12px;
+      background: rgba(255,255,255,.55);
+      border:1px solid rgba(0,0,0,.08);
+      border-radius:999px;
+      padding: 10px 12px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 10px 24px rgba(0,0,0,.08);
+    }
+    #macro .dragHint b{color: rgba(30,58,138,.72);}
+    #macro .dragHint .bar{
+      display:inline-block;
+      width:8px; height:8px;
+      border-radius:99px;
+      background: rgba(30,58,138,.35);
+      margin: 0 8px;
+      vertical-align: middle;
+    }
+
+    #macro canvas{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      z-index:25;
+      pointer-events:none;
+    }
+    #macro .plants{
+      position:absolute; inset:0;
+      z-index:20;
+      pointer-events:none;
+    }
+    .plant{
+      position:absolute;
+      width:64px; height:64px;
+      pointer-events:auto;
+      cursor: help;
+      transition: transform .18s ease, opacity .20s ease, filter .20s ease;
+      transform-origin: center;
+      will-change: transform, opacity;
+    }
+    .plant.reed{ width:64px; height:64px; transform-origin: bottom; }
+    .plant.spartina{ width:48px; height:48px; transform-origin: center; }
+
+    @keyframes sway{
+      0%{ transform: translateY(0px) rotate(-1.2deg); }
+      50%{ transform: translateY(-2px) rotate(1.2deg); }
+      100%{ transform: translateY(0px) rotate(-1.2deg); }
+    }
+    .plant.sway{ animation: sway 3.6s ease-in-out infinite; }
+    .plant:hover{ transform: translateY(-6px) scale(1.03); filter: brightness(1.02); }
+
+    /* Tooltip */
+    .tooltip{
+      position:fixed;
+      z-index:9999;
+      pointer-events:none;
+      transform: translate(14px, 14px);
+      display:none;
+      --tt-w: 420px;
+      --tt-img-maxh: 260px;
+      width: var(--tt-w);
+    }
+    .tooltip .box{
+      background: rgba(255,255,255,.92);
+      border:1px solid rgba(0,0,0,.12);
+      border-radius: 18px;
+      box-shadow: 0 16px 40px rgba(0,0,0,.18);
+      backdrop-filter: blur(8px);
+      overflow:hidden;
+    }
+    .tooltip .hd{ display:none; }
+    .tooltip .bd{
+      padding:0 14px 14px 14px;
+      font-size:12px;
+      line-height:1.5;
+      color: rgba(0,0,0,.68);
+    }
+    .tooltip img{
+      width:100%;
+      height:auto;
+      display:block;
+      border-top:1px solid rgba(0,0,0,.08);
+      background:#fff;
+      object-fit:contain;
+    }
+
+    /* Meso */
+    #meso{
+      background: var(--bg-meso);
+      overflow:hidden;
+      user-select:none;
+    }
+    #meso .top-bar{
+      position:absolute; top:24px; left:24px; right:24px;
+      display:flex; justify-content:space-between; gap:14px;
+      z-index:50;
+      pointer-events:none;
+    }
+    #meso .hint-pill{
+      padding: 10px 16px;
+      font-size: 12px;
+      color: rgba(0,0,0,.65);
+      pointer-events:auto;
+    }
+    #meso .top-actions{
+      display:flex; gap:10px;
+      pointer-events:auto;
+      align-items:center;
+    }
+
+    .legend{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 18px;
+      border:1px solid rgba(0,0,0,.10);
+      background: rgba(255,255,255,.78);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 16px 40px rgba(0,0,0,.10);
+    }
+    .legend .item{
+      display:flex; align-items:center; gap:8px;
+      padding:8px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(0,0,0,.10);
+      cursor:pointer;
+      user-select:none;
+      transition: transform .12s ease, background .12s ease, opacity .12s ease;
+      background: rgba(255,255,255,.70);
+    }
+    .legend .item:hover{ transform: translateY(-1px); }
+    .legend .item.off{ opacity:.35; }
+    .legend .sw{
+      width:10px; height:10px;
+      border-radius:99px;
+      background: #111;
+      box-shadow: 0 0 0 2px rgba(0,0,0,.06) inset;
+    }
+    .legend .tx{
+      font-size:12px;
+      font-weight:800;
+      color: rgba(0,0,0,.72);
+      white-space:nowrap;
+    }
+
+    #meso .edu{
+      position:absolute; right:24px; bottom:24px;
+      z-index:40;
+      max-width: 560px;
+      pointer-events:none;
+    }
+    #meso .edu .card{
+      background: rgba(255,255,255,.90);
+      border:1px solid rgba(0,0,0,.10);
+      border-radius: 18px;
+      box-shadow: 0 16px 40px rgba(0,0,0,.16);
+      padding: 16px 18px;
+      backdrop-filter: blur(8px);
+    }
+    #meso .edu p{
+      margin:0;
+      font-size: 12px;
+      line-height: 1.6;
+      color: rgba(0,0,0,.62);
+      font-weight: 300;
+      text-align: justify;
+    }
+
+    .dot{
+      position:absolute;
+      border-radius:999px;
+      cursor:pointer;
+      transition: transform .12s ease, filter .12s ease, opacity .12s ease;
+      z-index:6;
+      box-shadow: 0 10px 18px rgba(0,0,0,.10);
+      transform: translateZ(0);
+    }
+    .dot:hover{ transform: scale(1.65); filter: brightness(1.03); }
+
+    .dot[data-type="Uca arcuata"]{ background: color-mix(in srgb, var(--c-uca) 88%, white); }
+    .dot[data-type="Sesarma dehaani"]{ background: color-mix(in srgb, var(--c-sesarma) 86%, white); }
+    .dot[data-type="Helice tridens"]{ background: color-mix(in srgb, var(--c-helice) 85%, white); }
+    .dot[data-type="Macrophthalmus japonicus"]{ background: color-mix(in srgb, var(--c-macro) 86%, white); }
+
+    .meso-plant{
+      position:absolute;
+      pointer-events:none;
+      transition: transform .10s ease-out, opacity .10s ease-out;
+      will-change: transform;
+      z-index:10;
+      filter: drop-shadow(0 10px 14px rgba(0,0,0,.08));
+    }
+
+    /* ======= ✅ Hover popup (bigger + single-line text) ======= */
+    .hole-pop{
+      position:fixed;
+      z-index:9999;
+      pointer-events:none;
+      display:none;
+      transform: translate(-50%, -105%);
+      animation: pop .18s ease both;
+    }
+    @keyframes pop{
+      from{opacity:0; transform: translate(-50%, -105%) scale(.96);}
+      to{opacity:1; transform: translate(-50%, -105%) scale(1);}
+    }
+    .hole-pop .bubble{
+      background:#fff;
+      border-radius: 999px;
+      border:2px solid rgba(0,0,0,.06);
+      box-shadow: 0 22px 70px rgba(0,0,0,.18);
+      padding: 14px 14px 12px 14px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:10px;
+      min-width: 280px; /* ✅ 让长学名能装下 */
+      max-width: 320px;
+    }
+    .hole-pop .lens{
+      width: 220px;   /* ✅ bigger */
+      height: 220px;  /* ✅ bigger */
+      border-radius: 999px;
+      overflow:hidden;
+      background:#000;
+      position:relative;
+      display:grid;
+      place-items:center;
+    }
+    .hole-pop .lens img{
+      width:100%; height:100%; object-fit:cover; display:block;
+    }
+    .hole-pop .lens .inner-shadow{
+      position:absolute; inset:0;
+      border-radius:999px;
+      box-shadow: inset 0 0 22px rgba(0,0,0,.55);
+    }
+    .hole-pop .name,
+    /* ===== 单行学名 · 标本式 ===== */
+    .hole-pop .sci{
+      width: 100%;
+      text-align: center;
+
+      white-space: nowrap;      /* 强制单行 */
+      overflow: hidden;
+      text-overflow: ellipsis;  /* 超出省略 */
+
+      font-size: 14px;          /* 比之前略大 */
+      font-weight: 600;
+      font-style: italic;       /* 学名规范 */
+      letter-spacing: .02em;
+
+      color: rgba(0,0,0,.70);
+      line-height: 1.2;
+      margin-top: 6px;
+    }
+
+    .hole-pop .tri{
+      width: 14px;
+      height: 14px;
+      background:#fff;
+      transform: rotate(45deg);
+      margin: -7px auto 0 auto;
+      border-right: 1px solid rgba(0,0,0,.06);
+      border-bottom: 1px solid rgba(0,0,0,.06);
+    }
+
+    .modal{
+      position:absolute; inset:0;
+      background: rgba(0,0,0,.20);
+      backdrop-filter: blur(6px);
+      display:none;
+      z-index:999;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+    }
+    .modal.show{display:flex;}
+    .modal .panel{
+      width: min(980px, 96vw);
+      max-height: 90vh;
+      background:#fff;
+      border-radius: 18px;
+      box-shadow: 0 30px 90px rgba(0,0,0,.22);
+      border:1px solid rgba(0,0,0,.10);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .modal .ph{
+      padding: 16px 18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      background: rgba(243,244,246,.75);
+      border-bottom:1px solid rgba(0,0,0,.08);
+    }
+    .modal .ph h3{margin:0; font-size:16px; font-weight:900; color: rgba(0,0,0,.78);}
+    .modal .body{
+      padding: 16px 18px;
+      overflow:auto;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    .modal .sec{
+      border:1px solid rgba(0,0,0,.10);
+      border-radius: 14px;
+      padding: 12px 12px 10px 12px;
+    }
+    .modal .sec h4{
+      margin:0 0 10px 0;
+      font-size: 13px;
+      font-weight: 900;
+      color: rgba(0,0,0,.72);
+    }
+    .row{display:flex; gap:10px; align-items:center; margin:8px 0;}
+    .row label{font-size:12px; color: rgba(0,0,0,.60); width: 150px;}
+    .row input[type="text"], .row input[type="number"]{
+      flex:1;
+      border:1px solid rgba(0,0,0,.14);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      outline:none;
+    }
+    .row input[type="range"]{flex:1;}
+    .row input[type="file"]{flex:1; font-size:12px;}
+    .small{font-size:11px; color: rgba(0,0,0,.48);}
+
+    .modal .pf{
+      padding: 14px 18px;
+      background: rgba(243,244,246,.75);
+      border-top:1px solid rgba(0,0,0,.08);
+      display:flex;
+      justify-content:flex-end;
+      gap:10px;
+    }
+    .danger{
+      background: rgba(255,255,255,.92);
+      border:1px solid rgba(220,38,38,.25);
+      color: rgba(185,28,28,.95);
+    }
+  </style>
+</head>
+
+<body>
+<div class="app" id="app">
+
+  <!-- =======================
+       MACRO VIEW
+       ======================= -->
+  <section class="view shown" id="macro">
+    <div class="sky"></div>
+    <div class="haze"></div>
+
+    <div class="zone-bands">
+      <div class="band b1"></div>
+      <div class="band b2"></div>
+      <div class="band b3"></div>
+    </div>
+
+    <div class="top-right">
+      <button class="btn" id="openSettingsBtn" title="Customize">
+        <span class="icon">⚙️</span>
+      </button>
+
+      <button class="btn primary" id="toMesoBtn">
+        <span class="icon">🔎</span>
+        <span class="label">Take a closer look</span>
+      </button>
+    </div>
+
+    <div class="dragHint">
+      <b>Drag</b> to scrub tide <span class="bar"></span> release to resume
+    </div>
+
+    <div class="zone-lines">
+      <div class="line l1"></div>
+      <div class="line l2"></div>
+    </div>
+
+    <div class="zone-labels" id="macroLabels">
+      <div class="zone-label" style="top:16.65%;"><div id="lblHigh"></div></div>
+      <div class="zone-label" style="top:50%;"><div id="lblMid"></div></div>
+      <div class="zone-label" style="top:83.35%;"><div id="lblLow"></div></div>
+    </div>
+
+    <div class="plants" id="macroPlants"></div>
+    <canvas id="tideCanvas"></canvas>
+
+    <div class="tooltip" id="plantTooltip">
+      <div class="box" id="ttBox">
+        <div class="hd" id="ttTitle">—</div>
+        <div class="bd" id="ttContent">—</div>
+        <img id="ttImg" alt="" style="display:none"/>
+      </div>
+    </div>
+
+    <div class="footer">
+      <h2>With each rise and fall,</h2>
+      <p>the tide inscribes its story into the very fabric of the shore's vegetation.</p>
+    </div>
+  </section>
+
+  <!-- =======================
+       MESO VIEW
+       ======================= -->
+  <section class="view hidden" id="meso">
+
+    <div class="zone-bands">
+      <div class="band b1"></div>
+      <div class="band b2"></div>
+      <div class="band b3"></div>
+    </div>
+
+    <div class="zone-lines">
+      <div class="line l1"></div>
+      <div class="line l2"></div>
+    </div>
+
+    <div class="zone-labels" id="mesoLabels">
+      <div class="zone-label" style="top:16.65%;"><div id="mlblHigh"></div></div>
+      <div class="zone-label" style="top:50%;"><div id="mlblMid"></div></div>
+      <div class="zone-label" style="top:83.35%;"><div id="mlblLow"></div></div>
+    </div>
+
+    <div class="top-bar">
+      <div class="hint-pill pill">
+        <span style="font-weight:800;">Hover:</span> Push aside plants
+        <span style="opacity:.5; margin:0 10px;">|</span>
+        <span style="font-weight:800;">Hover Hole:</span> View Details
+        <span style="opacity:.5; margin:0 10px;">|</span>
+        <span style="font-weight:800;">Click Hole:</span> Enter Section View
+      </div>
+
+      <div class="top-actions">
+        <!-- ✅ legend 文案改为学名（同时保留 dataset 用于过滤） -->
+        <div class="legend" id="legend">
+          <div class="item" data-k="Sesarma dehaani" title="Toggle Sesarma dehaani">
+            <span class="sw" style="background: var(--c-sesarma)"></span><span class="tx">Sesarma dehaani</span>
+          </div>
+          <div class="item" data-k="Uca arcuata" title="Toggle Uca arcuata">
+            <span class="sw" style="background: var(--c-uca)"></span><span class="tx">Uca arcuata</span>
+          </div>
+          <div class="item" data-k="Helice tridens" title="Toggle Helice tridens">
+            <span class="sw" style="background: var(--c-helice)"></span><span class="tx">Helice tridens</span>
+          </div>
+          <div class="item" data-k="Macrophthalmus japonicus" title="Toggle Macrophthalmus japonicus">
+            <span class="sw" style="background: var(--c-macro)"></span><span class="tx">Macrophthalmus japonicus</span>
+          </div>
+        </div>
+
+        <button class="btn ghost" id="mesoBackBtn"><span class="icon">←</span> Back</button>
+      </div>
+    </div>
+
+    <div id="mesoDots"></div>
+    <div id="mesoPlants"></div>
+
+    <div class="hole-pop" id="holePop">
+      <div class="bubble">
+        <div class="lens">
+          <img id="holePopImg" alt="" />
+          <div class="inner-shadow"></div>
+        </div>
+        <div class="sci only" id="holePopSci">—</div>
+      </div>
+      <div class="tri"></div>
+    </div>
+
+    <div class="edu">
+      <div class="card">
+        <p>
+          The density of crab burrows in the high-tidal reed habitat is significantly higher than in the mid-tidal ecotone habitat and the low-tidal <i>Spartina alterniflora</i> habitat, reaching its annual peak in summer. The average opening diameter of crab burrows in the high-tidal reed habitat is significantly smaller than in the mid-tidal ecotone habitat and the low-tidal <i>Spartina alterniflora</i> habitat. However, there is no significant difference in the average opening diameter between the low-tidal <i>Spartina alterniflora</i> habitat and the mid-tidal ecotone habitat.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- =======================
+       SETTINGS MODAL
+       ======================= -->
+  <div class="modal" id="settingsModal">
+    <div class="panel">
+      <div class="ph">
+        <h3>Customization (stored in localStorage)</h3>
+        <button class="btn" id="closeSettingsBtn" title="Close"><span class="icon">✕</span></button>
+      </div>
+
+      <div class="body">
+        <div class="sec">
+          <h4>Tide & Environment</h4>
+          <div class="row"><label>Tide Color Start</label><input type="text" id="tideColorStart" placeholder="#96EFFF" /></div>
+          <div class="row"><label>Tide Color End</label><input type="text" id="tideColorEnd" placeholder="#F0F9FF" /></div>
+          <div class="row"><label>Min Height (%)</label><input type="range" id="tideMinHeight" min="0" max="100" /><span class="small" id="tideMinLabel">—</span></div>
+          <div class="row"><label>Max Height (%)</label><input type="range" id="tideMaxHeight" min="0" max="100" /><span class="small" id="tideMaxLabel">—</span></div>
+          <div class="row"><label>Tide Speed (0.1–5)</label><input type="range" id="tideSpeed" min="0.1" max="5" step="0.1" /><span class="small" id="tideSpeedLabel">—</span></div>
+        </div>
+
+        <div class="sec">
+          <h4>Zone Labels</h4>
+          <div class="row"><label>Label Scale</label><input type="range" id="labelScale" min="0.5" max="2.0" step="0.1" /><span class="small" id="labelScaleLabel">—</span></div>
+          <div class="row"><label>High Label Image</label><input type="file" id="highTideLabelImage" accept="image/*" /></div>
+          <div class="row"><label>Mid Label Image</label><input type="file" id="midTideLabelImage" accept="image/*" /></div>
+          <div class="row"><label>Low Label Image</label><input type="file" id="lowTideLabelImage" accept="image/*" /></div>
+          <div class="small">Tip: 如果不上传，就用默认文字标签。</div>
+        </div>
+
+        <div class="sec">
+          <h4>Plants (Macro & Meso)</h4>
+          <div class="row"><label>Reed Image</label><input type="file" id="reedImage" accept="image/*" /></div>
+          <div class="row"><label>Spartina Image</label><input type="file" id="spartinaImage" accept="image/*" /></div>
+
+          <div class="row"><label>Reed Density</label><input type="range" id="reedDensity" min="10" max="400" /><span class="small" id="reedDensityLabel">—</span></div>
+          <div class="row"><label>Spartina Density</label><input type="range" id="spartinaDensity" min="10" max="400" /><span class="small" id="spartinaDensityLabel">—</span></div>
+
+          <div class="row"><label>Reed Base Size</label><input type="range" id="reedBaseSize" min="0.1" max="2" step="0.1" /><span class="small" id="reedBaseSizeLabel">—</span></div>
+          <div class="row"><label>Spartina Base Size</label><input type="range" id="spartinaBaseSize" min="0.1" max="2" step="0.1" /><span class="small" id="spartinaBaseSizeLabel">—</span></div>
+
+          <div class="row"><label>Reed Tooltip Img</label><input type="file" id="reedTooltipImage" accept="image/*" /></div>
+          <div class="row"><label>Spartina Tooltip Img</label><input type="file" id="spartinaTooltipImage" accept="image/*" /></div>
+        </div>
+
+        <div class="sec">
+          <h4>Crab Burrows (Meso hover)</h4>
+
+          <div class="small" style="margin-bottom:8px;">
+            点击洞会跳到：<b>micro.html?crab=&lt;scientific name&gt;</b>
+          </div>
+
+          <div class="row"><label>UCA display name</label><input type="text" id="crabName_UCA" /></div>
+          <div class="row"><label>UCA intro image</label><input type="file" id="crabImg_UCA" accept="image/*" /></div>
+
+          <div class="row"><label>SESARMA name</label><input type="text" id="crabName_SESARMA" /></div>
+          <div class="row"><label>SESARMA image</label><input type="file" id="crabImg_SESARMA" accept="image/*" /></div>
+
+          <div class="row"><label>HELICE name</label><input type="text" id="crabName_HELICE" /></div>
+          <div class="row"><label>HELICE image</label><input type="file" id="crabImg_HELICE" accept="image/*" /></div>
+
+          <div class="row"><label>MACRO name</label><input type="text" id="crabName_MACRO" /></div>
+          <div class="row"><label>MACRO image</label><input type="file" id="crabImg_MACRO" accept="image/*" /></div>
+
+          <div class="small">如果不上传图片，hover 弹窗会显示“no image”。</div>
+        </div>
+      </div>
+
+      <div class="pf">
+        <button class="btn danger" id="resetAllBtn">Reset to Default</button>
+        <button class="btn" id="saveCloseBtn">Save & Close</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  const PlantType = { SPARTINA:'spartina', REED:'reed' };
+
+  const CrabType = {
+    UCA: 'Uca arcuata',
+    SESARMA: 'Sesarma dehaani',
+    HELICE: 'Helice tridens',
+    MACRO: 'Macrophthalmus japonicus'
+  };
+
+  const STORAGE_KEY = 'crab_burrow_settings';
+  const FILTER_KEY  = 'crab_burrow_filters';
+
+  const DEFAULT_SETTINGS = {
+    tideColorStart: '#96EFFF',
+    tideColorEnd: '#F0F9FF',
+    tideSpeed: 1,
+    tideMinHeight: 10,
+    tideMaxHeight: 60,
+
+    highTideLabelImage: null,
+    midTideLabelImage: null,
+    lowTideLabelImage: null,
+    labelScale: 1,
+
+    reedImage: null,
+    spartinaImage: null,
+    reedTooltipImage: null,
+    spartinaTooltipImage: null,
+
+    reedDensity: 150,
+    spartinaDensity: 150,
+    reedBaseSize: 0.6,
+    spartinaBaseSize: 0.6,
+
+    reedTooltipSize: { width: 300, height: 200 },
+    spartinaTooltipSize: { width: 300, height: 200 },
+
+    customCrabs: {
+      [CrabType.UCA]: { name: 'Uca arcuata', introImage: null },
+      [CrabType.SESARMA]: { name: 'Sesarma dehaani', introImage: null },
+      [CrabType.HELICE]: { name: 'Helice tridens', introImage: null },
+      [CrabType.MACRO]: { name: 'Macrophthalmus japonicus', introImage: null },
+    }
+  };
+
+  function safeParseJSON(s){ try{ return JSON.parse(s); } catch(e){ return null; } }
+  function loadSettings(){
+    const raw = localStorage.getItem(STORAGE_KEY);
+    const parsed = raw ? safeParseJSON(raw) : null;
+    if(!parsed) return structuredClone(DEFAULT_SETTINGS);
+    const merged = { ...structuredClone(DEFAULT_SETTINGS), ...parsed };
+    merged.customCrabs = { ...structuredClone(DEFAULT_SETTINGS).customCrabs, ...(parsed.customCrabs || {}) };
+    return merged;
+  }
+  function saveSettings(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+
+  let settings = loadSettings();
+
+  function loadFilters(){
+    const raw = localStorage.getItem(FILTER_KEY);
+    const parsed = raw ? safeParseJSON(raw) : null;
+    if(parsed && typeof parsed === 'object') return parsed;
+    return {
+      [CrabType.SESARMA]: true,
+      [CrabType.UCA]: true,
+      [CrabType.HELICE]: true,
+      [CrabType.MACRO]: true,
+    };
+  }
+  function saveFilters(f){ localStorage.setItem(FILTER_KEY, JSON.stringify(f)); }
+  let filters = loadFilters();
+
+  const macro = document.getElementById('macro');
+  const meso  = document.getElementById('meso');
+  const toMesoBtn = document.getElementById('toMesoBtn');
+  const mesoBackBtn = document.getElementById('mesoBackBtn');
+
+  const macroPlants = document.getElementById('macroPlants');
+  const mesoPlants  = document.getElementById('mesoPlants');
+  const mesoDots    = document.getElementById('mesoDots');
+
+  const plantTooltip = document.getElementById('plantTooltip');
+  const ttTitle = document.getElementById('ttTitle');
+  const ttContent = document.getElementById('ttContent');
+  const ttImg = document.getElementById('ttImg');
+
+  const holePop = document.getElementById('holePop');
+  const holePopImg = document.getElementById('holePopImg');
+  const holePopSci  = document.getElementById('holePopSci');
+
+  const lblHigh = document.getElementById('lblHigh');
+  const lblMid  = document.getElementById('lblMid');
+  const lblLow  = document.getElementById('lblLow');
+
+  const mlblHigh = document.getElementById('mlblHigh');
+  const mlblMid  = document.getElementById('mlblMid');
+  const mlblLow  = document.getElementById('mlblLow');
+
+  const settingsModal = document.getElementById('settingsModal');
+  const openSettingsBtn = document.getElementById('openSettingsBtn');
+  const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+  const saveCloseBtn = document.getElementById('saveCloseBtn');
+  const resetAllBtn = document.getElementById('resetAllBtn');
+
+  const legend = document.getElementById('legend');
+  const $ = (id)=>document.getElementById(id);
+
+  function showMacro(){
+    macro.classList.remove('hidden'); macro.classList.add('shown');
+    meso.classList.remove('shown'); meso.classList.add('hidden');
+    hideHolePop();
+  }
+  function showMeso(){
+    meso.classList.remove('hidden'); meso.classList.add('shown');
+    macro.classList.remove('shown'); macro.classList.add('hidden');
+    hideTooltip();
+  }
+  toMesoBtn.addEventListener('click', showMeso);
+  mesoBackBtn.addEventListener('click', showMacro);
+
+  function renderZoneLabel(target, label, bg){
+    target.innerHTML = '';
+    const scale = settings.labelScale || 1;
+
+    const imgKey =
+      label.includes('High') ? 'highTideLabelImage' :
+      label.includes('Mid')  ? 'midTideLabelImage'  : 'lowTideLabelImage';
+
+    const img = settings[imgKey];
+    if(img){
+      const el = document.createElement('img');
+      el.src = img;
+      el.alt = label;
+      el.style.transform = `scale(${scale})`;
+      target.appendChild(el);
+      return;
+    }
+
+    const tag = document.createElement('div');
+    tag.className = 'tag';
+    tag.textContent = label;
+    tag.style.transform = `scale(${scale})`;
+    tag.style.background = bg;
+    target.appendChild(tag);
+  }
+
+  function renderAllLabels(){
+    renderZoneLabel(lblHigh,  'High-tide beach', 'var(--high)');
+    renderZoneLabel(lblMid,   'Mid-tide beach',  'var(--mid)');
+    renderZoneLabel(lblLow,   'Low-tide beach',  'var(--low)');
+
+    renderZoneLabel(mlblHigh, 'High-tide beach', 'var(--high)');
+    renderZoneLabel(mlblMid,  'Mid-tide beach',  'var(--mid)');
+    renderZoneLabel(mlblLow,  'Low-tide beach',  'var(--low)');
+  }
+
+  let tooltipOn = false;
+  let lastMouse = {x:0,y:0};
+
+  window.addEventListener('mousemove', (e)=>{
+    lastMouse.x = e.clientX;
+    lastMouse.y = e.clientY;
+    if(tooltipOn){
+      plantTooltip.style.left = lastMouse.x + 'px';
+      plantTooltip.style.top  = lastMouse.y + 'px';
+    }
+  });
+
+  function showTooltip(title, content, img){
+    tooltipOn = true;
+    ttTitle.textContent = title;
+    ttContent.textContent = content;
+    if(img){
+      ttImg.style.display = 'block';
+      ttImg.src = img;
+    }else{
+      ttImg.style.display = 'none';
+      ttImg.removeAttribute('src');
+    }
+    plantTooltip.style.display = 'block';
+    plantTooltip.style.left = lastMouse.x + 'px';
+    plantTooltip.style.top  = lastMouse.y + 'px';
+  }
+  function hideTooltip(){
+    tooltipOn = false;
+    plantTooltip.style.display = 'none';
+  }
+
+  function rand(a,b){ return a + Math.random()*(b-a); }
+  let macroReeds = [];
+  let macroSpartina = [];
+
+  function genMacroPlants(){
+    macroReeds = [];
+    macroSpartina = [];
+
+    const reedCount = Math.floor((settings.reedDensity||150) * 1.5);
+    for(let i=0;i<reedCount;i++){
+      macroReeds.push({
+        id:i,
+        left: rand(0,100),
+        top: rand(0,66.6),
+        rotation: rand(-8,8),
+        scale: (rand(0.8,1.2)) * (settings.reedBaseSize||0.6),
+        swayDelay: rand(0,2.4),
+        swayDur: rand(2.8,4.3)
+      });
+    }
+
+    const spCount = Math.floor((settings.spartinaDensity||150) * 2.5);
+    for(let i=0;i<spCount;i++){
+      macroSpartina.push({
+        id:i,
+        left: rand(0,100),
+        top: 33.3 + rand(0,66.7),
+        rotation: rand(0,360),
+        scale: (rand(0.8,1.2)) * (settings.spartinaBaseSize||0.6),
+        swayDelay: rand(0,2.4),
+        swayDur: rand(2.8,4.3)
+      });
+    }
+  }
+
+  const tideCanvas = document.getElementById('tideCanvas');
+  const tideCtx = tideCanvas.getContext('2d');
+  let tideTime = 0;
+  let currentTideHeightPercent = settings.tideMinHeight;
+
+  function ensureHash(c){ return (c||'').startsWith('#') ? c : ('#'+c); }
+
+  function resizeTideCanvas(){
+    const w = tideCanvas.clientWidth|0;
+    const h = tideCanvas.clientHeight|0;
+    if(tideCanvas.width!==w || tideCanvas.height!==h){
+      tideCanvas.width = w;
+      tideCanvas.height = h;
+    }
+  }
+
+  function drawWave(fillStyle, offsetY, amp, freq, phase){
+    const w = tideCanvas.width;
+    const h = tideCanvas.height;
+    tideCtx.fillStyle = fillStyle;
+    tideCtx.beginPath();
+    const yBase = h - (currentTideHeightPercent/100 * h) + offsetY;
+
+    tideCtx.moveTo(0,h);
+    tideCtx.lineTo(0,yBase);
+    for(let x=0;x<=w;x+=10){
+      const y = yBase
+        + Math.sin(x*freq + tideTime*2 + phase) * amp
+        + Math.sin(x*freq*2 + tideTime*3) * (amp/2);
+      tideCtx.lineTo(x,y);
+    }
+    tideCtx.lineTo(w,h);
+    tideCtx.closePath();
+    tideCtx.fill();
+  }
+
+  let tideAuto = true;
+  let draggingTide = false;
+  let dragStartY = 0;
+  let dragStartHeight = 0;
+  let resumeTimer = null;
+
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+  function shouldIgnoreTideDrag(e){
+    return !!e.target.closest(
+      'button, a, input, textarea, select, label,' +
+      '#openSettingsBtn, #toMesoBtn, #settingsModal, .panel,' +
+      '.top-right, .dragHint, .tooltip'
+    );
+  }
+
+  macro.addEventListener('pointerdown', (e)=>{
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
+    if(shouldIgnoreTideDrag(e)) return;
+
+    draggingTide = true;
+    try{ macro.setPointerCapture(e.pointerId); }catch(_){}
+    dragStartY = e.clientY;
+    dragStartHeight = currentTideHeightPercent;
+    tideAuto = false;
+
+    if(resumeTimer) { clearTimeout(resumeTimer); resumeTimer = null; }
+  });
+
+  macro.addEventListener('pointermove', (e)=>{
+    if(!draggingTide) return;
+    const dy = (e.clientY - dragStartY);
+    const delta = (dy / window.innerHeight) * 90;
+    const minH = settings.tideMinHeight;
+    const maxH = settings.tideMaxHeight;
+    currentTideHeightPercent = clamp(dragStartHeight + delta, minH, maxH);
+  });
+
+  function endDrag(e){
+    if(!draggingTide) return;
+    draggingTide = false;
+    try{ macro.releasePointerCapture(e.pointerId); }catch(_){}
+    resumeTimer = setTimeout(()=>{ tideAuto = true; }, 1200);
+  }
+  macro.addEventListener('pointerup', endDrag);
+  macro.addEventListener('pointercancel', endDrag);
+  macro.addEventListener('pointerleave', (e)=>{ if(draggingTide) endDrag(e); });
+
+  function tickTide(){
+    if(macro.classList.contains('hidden')) {
+      requestAnimationFrame(tickTide);
+      return;
+    }
+
+    if(tideAuto){
+      tideTime += 0.005 * (settings.tideSpeed||1);
+      const tideCycle = (Math.sin(tideTime) + 1) / 2;
+      const minH = settings.tideMinHeight;
+      const maxH = settings.tideMaxHeight;
+      currentTideHeightPercent = minH + (maxH - minH) * tideCycle;
+    }
+
+    resizeTideCanvas();
+    const w = tideCanvas.width;
+    const h = tideCanvas.height;
+    tideCtx.clearRect(0,0,w,h);
+
+    const c0 = ensureHash(settings.tideColorStart || '#96EFFF');
+    const c1 = ensureHash(settings.tideColorEnd   || '#F0F9FF');
+
+    const maxH = settings.tideMaxHeight;
+    const grad = tideCtx.createLinearGradient(0, h - (maxH/100*h), 0, h);
+    grad.addColorStop(0, c0);
+    grad.addColorStop(1, c1);
+
+    drawWave(grad, 0, 15, 0.003, 0);
+
+    tideCtx.globalAlpha = 0.48;
+    drawWave('#ffffff', -5, 15, 0.003, 1);
+    tideCtx.globalAlpha = 1;
+
+    requestAnimationFrame(tickTide);
+  }
+
+  function submergeAlpha(topPercent){
+    const plantHeightFromBottom = (100 - topPercent);
+    const water = currentTideHeightPercent;
+    const d = plantHeightFromBottom - water;
+    const a = clamp((d + 8) / 8, 0, 1);
+    return a;
+  }
+
+  function renderMacroPlants(){
+    macroPlants.innerHTML = '';
+
+    for(const p of macroReeds){
+      const a = submergeAlpha(p.top);
+      if(a <= 0.01) continue;
+
+      const el = document.createElement('div');
+      el.className = 'plant reed sway';
+      el.style.left = p.left + '%';
+      el.style.top  = p.top  + '%';
+      el.style.opacity = String(a);
+      el.style.animationDelay = `${p.swayDelay}s`;
+      el.style.animationDuration = `${p.swayDur}s`;
+      el.style.transform = `scale(${p.scale}) rotate(${p.rotation}deg)`;
+
+      el.addEventListener('mouseenter', ()=>{
+        showTooltip('Reed (Phragmites)','Perennial herbaceous plants, widely distributed.',settings.reedTooltipImage);
+      });
+      el.addEventListener('mouseleave', hideTooltip);
+
+      if(settings.reedImage){
+        const img = document.createElement('img');
+        img.src = settings.reedImage;
+        img.alt = 'Reed';
+        img.style.width='100%'; img.style.height='100%';
+        img.style.objectFit='contain';
+        img.style.filter='drop-shadow(0 10px 18px rgba(0,0,0,.12))';
+        el.appendChild(img);
+      }else{
+        el.innerHTML = `
+          <svg viewBox="0 0 100 100" style="width:100%;height:100%;opacity:.92">
+            <path d="M50 100 Q 60 50 80 20 M50 100 Q 40 60 20 30 M50 100 L 50 10" stroke="#a16207" stroke-width="2" fill="none" />
+            <path d="M80 20 Q 90 10 70 10 Z" fill="#ca8a04" />
+            <circle cx="50" cy="95" r="5" fill="#fef08a" />
+          </svg>
+        `;
+      }
+      macroPlants.appendChild(el);
+    }
+
+    for(const p of macroSpartina){
+      const a = submergeAlpha(p.top);
+      if(a <= 0.01) continue;
+
+      const el = document.createElement('div');
+      el.className = 'plant spartina sway';
+      el.style.left = p.left + '%';
+      el.style.top  = p.top  + '%';
+      el.style.opacity = String(a);
+      el.style.animationDelay = `${p.swayDelay}s`;
+      el.style.animationDuration = `${p.swayDur}s`;
+      el.style.transform = `scale(${p.scale}) rotate(${p.rotation}deg)`;
+
+      el.addEventListener('mouseenter', ()=>{
+        showTooltip('Spartina alterniflora','A salt-tolerant plant. Its rapid spread accelerates sediment accumulation.',settings.spartinaTooltipImage);
+      });
+      el.addEventListener('mouseleave', hideTooltip);
+
+      if(settings.spartinaImage){
+        const img = document.createElement('img');
+        img.src = settings.spartinaImage;
+        img.alt = 'Spartina';
+        img.style.width='100%'; img.style.height='100%';
+        img.style.objectFit='contain';
+        img.style.filter='drop-shadow(0 10px 18px rgba(0,0,0,.10))';
+        el.appendChild(img);
+      }else{
+        el.innerHTML = `
+          <svg viewBox="0 0 100 100" style="width:100%;height:100%;">
+            <path d="M50 100 L 20 40 L 50 20 L 80 40 Z" fill="#86efac" stroke="#16a34a" stroke-width="1"/>
+            <path d="M50 100 L 10 60 L 30 50 Z" fill="#4ade80"/>
+            <path d="M50 100 L 90 60 L 70 50 Z" fill="#4ade80"/>
+          </svg>
+        `;
+      }
+      macroPlants.appendChild(el);
+    }
+  }
+
+  function macroRenderLoop(){
+    if(!macro.classList.contains('hidden')){
+      renderMacroPlants();
+    }
+    requestAnimationFrame(macroRenderLoop);
+  }
+
+  // =========================
+  // ✅ MESO distribution: top dense (reed) -> bottom sparse (spartina)
+  // =========================
+  function biasedY(zoneStart, zoneHeight, expToTop = 1.9){
+    // exp>1: 越偏向 zoneStart（越靠上）
+    return zoneStart + Math.pow(Math.random(), expToTop) * zoneHeight;
+  }
+  function generateZoneItems(count, zoneStart, zoneHeight, type, expToTop, densityMod=1){
+    const n = Math.floor(count * densityMod);
+    const out = [];
+    for(let i=0;i<n;i++){
+      out.push({
+        id: `${type}-${zoneStart}-${i}`,
+        x: Math.random() * 100,
+        y: biasedY(zoneStart, zoneHeight, expToTop),
+        rotation: Math.random() * 360,
+        scale: 0.8 + Math.random() * 0.4,
+      });
+    }
+    return out;
+  }
+
+  let mesoDotData = [];
+  let mesoPlantData = [];
+  let mesoMouse = {x:-1000,y:-1000};
+  let mesoRect = null;
+
+  function genMeso(){
+    // ✅ 数量梯度：上多下少；同时每个区内部也“越靠上越密”
+    const highDots = generateZoneItems(240, 0, 33.3, 'dot', 1.6, 1.25)
+      .map(d => ({...d, type: CrabType.SESARMA, size: 4}));
+
+    const midDots  = generateZoneItems(150, 33.3, 33.3, 'dot', 1.8, 1.0)
+      .map((d,i)=>({ ...d, type: (i%2===0?CrabType.UCA:CrabType.HELICE), size: 6 }));
+
+    const lowDots  = generateZoneItems(120, 66.6, 33.3, 'dot', 2.3, 0.55)
+      .map(d => ({...d, type: CrabType.MACRO, size: 8}));
+
+    mesoDotData = [...highDots, ...midDots, ...lowDots];
+
+    // plants 也做一点上密下疏（让画面一致）
+    const highPlants = generateZoneItems(130, 0, 33.3, 'plant', 1.5, 1.15).map(p => ({...p, plantType: PlantType.REED}));
+    const midReeds   = generateZoneItems(70, 33.3, 33.3, 'plant', 1.7, 0.95).map(p => ({...p, plantType: PlantType.REED}));
+    const midSp      = generateZoneItems(70, 33.3, 33.3, 'plant', 1.9, 0.85).map(p => ({...p, plantType: PlantType.SPARTINA}));
+    const lowSp      = generateZoneItems(130, 66.6, 33.3, 'plant', 2.2, 0.70).map(p => ({...p, plantType: PlantType.SPARTINA}));
+    mesoPlantData = [...highPlants, ...midReeds, ...midSp, ...lowSp];
+  }
+
+  function renderMesoDots(){
+    mesoDots.innerHTML = '';
+
+    for(const dot of mesoDotData){
+      const el = document.createElement('div');
+      el.className = 'dot';
+      el.dataset.type = dot.type;
+
+      el.style.left = dot.x + '%';
+      el.style.top  = dot.y + '%';
+      el.style.width = dot.size + 'px';
+      el.style.height= dot.size + 'px';
+
+      const on = !!filters[dot.type];
+      el.style.opacity = on ? '1' : '0';
+      el.style.pointerEvents = on ? 'auto' : 'none';
+
+      el.addEventListener('click', ()=>{
+        const crab = encodeURIComponent(dot.type);
+        window.location.href = `./micro.html?crab=${crab}`;
+      });
+
+      el.addEventListener('mouseenter', (e)=>{
+        const crabCfg = settings.customCrabs?.[dot.type];
+        if(!crabCfg) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        showHolePop(rect.left + rect.width/2, rect.top, dot.type, crabCfg);
+      });
+      el.addEventListener('mouseleave', hideHolePop);
+
+      mesoDots.appendChild(el);
+    }
+  }
+
+  function renderMesoPlants(){
+    mesoPlants.innerHTML = '';
+    for(const plant of mesoPlantData){
+      const el = document.createElement('div');
+      el.className = 'meso-plant';
+      el.style.left = plant.x + '%';
+      el.style.top  = plant.y + '%';
+
+      const isReed = plant.plantType === PlantType.REED;
+      const customImg = isReed ? settings.reedImage : settings.spartinaImage;
+
+      const rotation = isReed ? 0 : plant.rotation;
+      el.dataset.baseRotation = rotation;
+      el.dataset.scale = plant.scale;
+      el.dataset.isReed = isReed ? '1' : '0';
+
+      el.style.width  = isReed ? '60px' : '50px';
+      el.style.height = isReed ? '60px' : '50px';
+
+      if(customImg){
+        const img = document.createElement('img');
+        img.src = customImg;
+        img.style.width='100%';
+        img.style.height='100%';
+        img.style.objectFit='contain';
+        el.appendChild(img);
+      }else{
+        el.innerHTML = isReed ? `
+          <svg width="60" height="60" viewBox="0 0 60 60">
+            <path d="M30 60 C 20 40 10 20 5 0" stroke="#ca8a04" stroke-width="2" fill="none" />
+            <path d="M30 60 C 40 40 50 20 55 5" stroke="#ca8a04" stroke-width="2" fill="none" />
+            <path d="M30 60 L 30 10" stroke="#a16207" stroke-width="3" fill="none" />
+          </svg>
+        ` : `
+          <svg width="50" height="50" viewBox="0 0 50 50">
+            <path d="M25 50 L 15 25 L 0 25 L 15 15 L 10 0 L 25 10 L 40 0 L 35 15 L 50 25 L 35 25 L 25 50 Z" fill="#86efac" stroke="#22c55e" />
+          </svg>
+        `;
+      }
+      mesoPlants.appendChild(el);
+    }
+  }
+
+  function updateMesoPlantPhysics(){
+    if(meso.classList.contains('hidden')) {
+      requestAnimationFrame(updateMesoPlantPhysics);
+      return;
+    }
+
+    if(!mesoRect) mesoRect = meso.getBoundingClientRect();
+    const plants = mesoPlants.children;
+
+    const RADIUS = 150;
+    for(const el of plants){
+      const leftP = parseFloat(el.style.left);
+      const topP  = parseFloat(el.style.top);
+      const plantX = (leftP/100)*mesoRect.width + mesoRect.left;
+      const plantY = (topP/100)*mesoRect.height + mesoRect.top;
+
+      const dx = plantX - mesoMouse.x;
+      const dy = plantY - mesoMouse.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+
+      let tx=0, ty=0, opacity=1;
+      if(dist < RADIUS){
+        const force = (RADIUS - dist)/RADIUS;
+        const angle = Math.atan2(dy,dx);
+        const moveDist = force * 120;
+        tx = Math.cos(angle)*moveDist;
+        ty = Math.sin(angle)*moveDist;
+        opacity = 1 - (force*0.2);
+      }
+
+      const baseRot = parseFloat(el.dataset.baseRotation || '0');
+      const sc = parseFloat(el.dataset.scale || '1');
+      el.style.transform = `translate(${tx}px, ${ty}px) rotate(${baseRot}deg) scale(${sc})`;
+      el.style.opacity = opacity;
+    }
+
+    requestAnimationFrame(updateMesoPlantPhysics);
+  }
+
+  meso.addEventListener('mousemove', (e)=>{ mesoMouse.x = e.clientX; mesoMouse.y = e.clientY; });
+  meso.addEventListener('mouseleave', ()=>{
+    mesoMouse.x = -1000;
+    mesoMouse.y = -1000;
+    hideHolePop();
+  });
+  window.addEventListener('resize', ()=>{ mesoRect = null; });
+
+  function showHolePop(x,y, sciName, crabCfg){
+  holePop.style.display = 'block';
+  holePop.style.left = x + 'px';
+  holePop.style.top  = y + 'px';
+
+  holePopSci.textContent = sciName || '—';
+
+  if(crabCfg.introImage){
+    holePopImg.src = crabCfg.introImage;
+    holePopImg.style.display = 'block';
+  }else{
+    holePopImg.removeAttribute('src');
+    holePopImg.style.display = 'none';
+  }
+}
+
+  function hideHolePop(){ holePop.style.display = 'none'; }
+
+  function hydrateLegendUI(){
+    const items = legend.querySelectorAll('.item');
+    items.forEach(it=>{
+      const k = it.dataset.k;
+      const on = !!filters[k];
+      it.classList.toggle('off', !on);
+      it.addEventListener('click', ()=>{
+        filters[k] = !filters[k];
+        it.classList.toggle('off', !filters[k]);
+        saveFilters(filters);
+        renderMesoDots();
+        hideHolePop();
+      });
+    });
+  }
+
+  function openModal(){ settingsModal.classList.add('show'); }
+  function closeModal(){ settingsModal.classList.remove('show'); }
+
+  openSettingsBtn.addEventListener('click', openModal);
+  closeSettingsBtn.addEventListener('click', closeModal);
+  settingsModal.addEventListener('click', (e)=>{ if(e.target === settingsModal) closeModal(); });
+
+  function bindRange(id, get, set, labelId){
+    const el = $(id);
+    const lb = labelId ? $(labelId) : null;
+    el.value = String(get());
+    if(lb) lb.textContent = el.value;
+    el.addEventListener('input', ()=>{
+      const v = parseFloat(el.value);
+      set(v);
+      if(lb) lb.textContent = el.value;
+      applySettings();
+    });
+  }
+  function bindText(id, get, set){
+    const el = $(id);
+    el.value = String(get() || '');
+    el.addEventListener('input', ()=>{
+      set(el.value);
+      applySettings();
+    });
+  }
+
+  function fileToDataURL(file){
+    return new Promise((resolve,reject)=>{
+      const fr = new FileReader();
+      fr.onload = ()=> resolve(fr.result);
+      fr.onerror = reject;
+      fr.readAsDataURL(file);
+    });
+  }
+  async function bindFile(id, onData){
+    const el = $(id);
+    el.addEventListener('change', async ()=>{
+      const f = el.files && el.files[0];
+      if(!f) return;
+      const data = await fileToDataURL(f);
+      onData(data);
+      applySettings();
+      el.value = '';
+    });
+  }
+
+  function hydrateModal(){
+    bindText('tideColorStart', ()=>settings.tideColorStart, v=>settings.tideColorStart=v);
+    bindText('tideColorEnd',   ()=>settings.tideColorEnd,   v=>settings.tideColorEnd=v);
+
+    bindRange('tideMinHeight', ()=>settings.tideMinHeight, v=>settings.tideMinHeight=Math.round(v), 'tideMinLabel');
+    bindRange('tideMaxHeight', ()=>settings.tideMaxHeight, v=>settings.tideMaxHeight=Math.round(v), 'tideMaxLabel');
+    bindRange('tideSpeed',     ()=>settings.tideSpeed,     v=>settings.tideSpeed=v, 'tideSpeedLabel');
+
+    bindRange('labelScale', ()=>settings.labelScale, v=>settings.labelScale=v, 'labelScaleLabel');
+
+    bindRange('reedDensity', ()=>settings.reedDensity, v=>settings.reedDensity=Math.round(v), 'reedDensityLabel');
+    bindRange('spartinaDensity', ()=>settings.spartinaDensity, v=>settings.spartinaDensity=Math.round(v), 'spartinaDensityLabel');
+
+    bindRange('reedBaseSize', ()=>settings.reedBaseSize, v=>settings.reedBaseSize=v, 'reedBaseSizeLabel');
+    bindRange('spartinaBaseSize', ()=>settings.spartinaBaseSize, v=>settings.spartinaBaseSize=v, 'spartinaBaseSizeLabel');
+
+    bindFile('highTideLabelImage', data=>settings.highTideLabelImage=data);
+    bindFile('midTideLabelImage',  data=>settings.midTideLabelImage=data);
+    bindFile('lowTideLabelImage',  data=>settings.lowTideLabelImage=data);
+
+    bindFile('reedImage', data=>settings.reedImage=data);
+    bindFile('spartinaImage', data=>settings.spartinaImage=data);
+
+    bindFile('reedTooltipImage', data=>settings.reedTooltipImage=data);
+    bindFile('spartinaTooltipImage', data=>settings.spartinaTooltipImage=data);
+
+    bindText('crabName_UCA', ()=>settings.customCrabs[CrabType.UCA].name, v=>settings.customCrabs[CrabType.UCA].name=v);
+    bindText('crabName_SESARMA', ()=>settings.customCrabs[CrabType.SESARMA].name, v=>settings.customCrabs[CrabType.SESARMA].name=v);
+    bindText('crabName_HELICE', ()=>settings.customCrabs[CrabType.HELICE].name, v=>settings.customCrabs[CrabType.HELICE].name=v);
+    bindText('crabName_MACRO', ()=>settings.customCrabs[CrabType.MACRO].name, v=>settings.customCrabs[CrabType.MACRO].name=v);
+
+    bindFile('crabImg_UCA', data=>settings.customCrabs[CrabType.UCA].introImage=data);
+    bindFile('crabImg_SESARMA', data=>settings.customCrabs[CrabType.SESARMA].introImage=data);
+    bindFile('crabImg_HELICE', data=>settings.customCrabs[CrabType.HELICE].introImage=data);
+    bindFile('crabImg_MACRO', data=>settings.customCrabs[CrabType.MACRO].introImage=data);
+  }
+
+  function applySettings(){
+    saveSettings(settings);
+    genMacroPlants();
+    renderAllLabels();
+
+    genMeso();
+    renderMesoDots();
+    renderMesoPlants();
+  }
+
+  saveCloseBtn.addEventListener('click', ()=>{
+    applySettings();
+    closeModal();
+  });
+
+  resetAllBtn.addEventListener('click', ()=>{
+    settings = structuredClone(DEFAULT_SETTINGS);
+    saveSettings(settings);
+    closeModal();
+    location.reload();
+  });
+
+  function init(){
+    renderAllLabels();
+
+    genMacroPlants();
+    renderMacroPlants();
+
+    genMeso();
+    renderMesoDots();
+    renderMesoPlants();
+
+    hydrateLegendUI();
+    hydrateModal();
+    applySettings();
+
+    requestAnimationFrame(tickTide);
+    requestAnimationFrame(macroRenderLoop);
+    requestAnimationFrame(updateMesoPlantPhysics);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

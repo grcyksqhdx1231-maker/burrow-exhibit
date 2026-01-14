@@ -1,0 +1,1208 @@
+<!doctype html> 
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Burrow Cross-section (Micro)</title>
+
+<style>
+html,body{
+  height:100%;
+  margin:0;
+  background:#000;
+  font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC","Microsoft YaHei",Arial;
+}
+
+/* ===== XS overlay ===== */
+.xs{ position:fixed; inset:0; background:#000; display:block; z-index:10; }
+
+.xs-viewport{ position:absolute; inset:0; overflow:hidden; cursor:grab; }
+.xs-viewport.dragging{ cursor:grabbing; }
+
+.xs-world{ position:absolute; left:0; top:0; transform-origin:0 0; }
+.xs-grain{ position:absolute; left:0; top:0; opacity:.85; pointer-events:none; }
+
+/* ✅ Crabs layer (now disabled) */
+.xs-crabs{
+  position:absolute;
+  left:0; top:0;
+  pointer-events:none;
+  z-index:3;
+  display:none; /* ✅ 直接隐藏螃蟹层 */
+}
+.crab{
+  position:absolute;
+  left:0; top:0;
+  transform: translate(-50%,-50%);
+  will-change: transform, left, top;
+  opacity: .94;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
+  mix-blend-mode: screen;
+}
+.crab svg{
+  width:100%;
+  height:100%;
+  display:block;
+}
+
+/* overlay (bbox highlight) lives in same world transform */
+.xs-overlay{ position:absolute; left:0; top:0; pointer-events:none; }
+.xs-overlay svg{ position:absolute; left:0; top:0; }
+.xs-highlight{
+  fill: none;
+  stroke: rgba(255,255,255,.95);
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 10px rgba(255,255,255,.45));
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+.xs-highlight.on{ opacity: 1; }
+
+.xs-mask{
+  position:absolute; inset:0;
+  background:#000;
+  pointer-events:none;
+  -webkit-mask-image: radial-gradient(circle var(--r) at var(--mx) var(--my),
+    transparent 0%, transparent 70%, black 100%);
+}
+
+/* ===== Top bar ===== */
+.xs-top{
+  position:absolute; left:14px; right:14px; top:12px;
+  display:flex; justify-content:space-between; z-index:25;
+}
+.xs-title{
+  padding:10px 14px;
+  border-radius:14px;
+  background:rgba(255,255,255,.65);
+  border:1px solid rgba(0,0,0,.18);
+  font-weight:800;
+}
+.xs-controls{ display:flex; gap:10px; align-items:center; }
+.xs-btn{
+  border-radius:999px;
+  padding:10px 14px;
+  border:1px solid rgba(255,255,255,.25);
+  background:rgba(255,255,255,.15);
+  color:#fff;
+  cursor:pointer;
+}
+.xs-btn.small{
+  padding:10px 12px;
+  font-weight:700;
+  letter-spacing:.02em;
+  min-width:64px;
+  text-align:center;
+}
+
+/* ===== HUD ===== */
+.xs-hud{
+  position:absolute; left:14px; bottom:58px;
+  display:flex; gap:10px; z-index:25;
+}
+.xs-tooltip,.xs-scale{
+  padding:10px 12px;
+  border-radius:14px;
+  background:rgba(255,255,255,.14);
+  color:#fff;
+  font-size:12px;
+}
+
+/* ✅ Bottom horizontal scrollbar (custom) */
+.xs-hscroll{
+  position:absolute;
+  left:14px; right:14px; bottom:14px;
+  z-index:26;
+  display:none;
+  align-items:center;
+  gap:10px;
+}
+.xs-hscroll .label{
+  color: rgba(255,255,255,.78);
+  font-size:12px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.14);
+  user-select:none;
+  white-space:nowrap;
+}
+.xs-hscroll input[type="range"]{
+  width: 100%;
+  accent-color: white;
+}
+
+/* ===== error ===== */
+.xs-error{
+  position:absolute;
+  left:14px; top:64px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:rgba(255,80,80,.14);
+  border:1px solid rgba(255,80,80,.25);
+  color:#ffdada;
+  font-size:12px;
+  max-width:min(720px, calc(100vw - 28px));
+  white-space:pre-wrap;
+  z-index:30;
+  display:none;
+}
+
+/* ===== Annotation Card / Panel (kept; hover card still works) ===== */
+.anno{
+  position:fixed;
+  z-index:28;
+  width:min(360px, calc(100vw - 28px));
+  pointer-events:auto;
+  opacity:0;
+  transform: translateY(6px);
+  transition: opacity .12s ease, transform .12s ease;
+  display:none;
+}
+.anno.show{ display:block; opacity:1; transform: translateY(0); }
+.anno .card{
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.20);
+  border-radius: 18px;
+  overflow:hidden;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 24px 80px rgba(0,0,0,.55);
+}
+.anno .hd{
+  padding: 12px 14px 10px 14px;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.anno .title{
+  color:#fff;
+  font-weight:900;
+  font-size:13px;
+  line-height:1.25;
+}
+.anno .sub{
+  margin-top:6px;
+  color: rgba(255,255,255,.70);
+  font-size:12px;
+  line-height:1.35;
+}
+.anno .pill{
+  padding:6px 10px;
+  border-radius:999px;
+  background: rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.18);
+  color: rgba(255,255,255,.85);
+  font-size:11px;
+  font-weight:800;
+  user-select:none;
+}
+.anno .img{
+  width:100%;
+  background:#000;
+  border-top:1px solid rgba(255,255,255,.10);
+  display:block;
+  overflow:hidden;
+}
+.anno .img .svgwrap{ width:100%; display:block; }
+.anno .img .svgwrap svg{ width:100%; height:auto; display:block; }
+
+/* ✅ 彻底去掉底部灰条（包括“打开”区域） */
+.anno .ft{ display:none !important; }
+
+.anno .link{
+  color: rgba(255,255,255,.92);
+  font-weight:900;
+  cursor:pointer;
+  user-select:none;
+}
+.anno .link:hover{ text-decoration: underline; }
+
+.panel{
+  position:fixed;
+  top:0; right:0; bottom:0;
+  width:min(440px, 92vw);
+  background: rgba(10,10,10,.78);
+  border-left:1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(14px);
+  z-index:40;
+  transform: translateX(105%);
+  transition: transform .18s ease;
+  box-shadow: -30px 0 90px rgba(0,0,0,.55);
+  display:flex;
+  flex-direction:column;
+}
+.panel.show{ transform: translateX(0); }
+.panel .ph{
+  padding: 14px 14px;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  border-bottom:1px solid rgba(255,255,255,.10);
+}
+.panel .ph .pt{
+  color:#fff;
+  font-weight:900;
+  font-size:14px;
+  line-height:1.25;
+}
+.panel .ph .ps{
+  margin-top:6px;
+  color: rgba(255,255,255,.70);
+  font-size:12px;
+  line-height:1.4;
+}
+.panel .close{
+  border-radius:999px;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.10);
+  color:#fff;
+  cursor:pointer;
+  font-weight:900;
+}
+.panel .body{ padding: 14px; overflow:auto; }
+.panel .bigimg{
+  width:100%;
+  border-radius: 16px;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.12);
+  background:#000;
+}
+.panel .bigimg .svgwrap svg{ width:100%; height:auto; display:block; }
+.panel .text{
+  margin-top: 12px;
+  color: rgba(255,255,255,.78);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.panel .meta{
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border:1px solid rgba(255,255,255,.12);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.70);
+  font-size: 12px;
+  line-height: 1.5;
+}
+</style>
+</head>
+
+<body>
+
+<div class="xs">
+  <div class="xs-viewport" id="xsViewport">
+    <div class="xs-world" id="xsWorld">
+      <div class="xs-grain" id="xsGrain"></div>
+      <div class="xs-crabs" id="xsCrabs"></div>
+      <div class="xs-overlay" id="xsOverlay"></div>
+    </div>
+    <div class="xs-mask" id="xsMask"></div>
+  </div>
+
+  <div class="xs-top">
+    <div class="xs-title" id="xsTitle">Cross-section</div>
+    <div class="xs-controls">
+      <button class="xs-btn" id="backBtn">Back</button>
+      <button class="xs-btn" id="xsFitBtn">Fit</button>
+      <button class="xs-btn" id="xsRandomBtn">Random</button>
+      <button class="xs-btn small" id="langBtn">中文</button>
+    </div>
+  </div>
+
+  <div class="xs-hud">
+    <div class="xs-tooltip" id="xsTip">Key: —<br/>BBox: —</div>
+    <div class="xs-scale" id="xsScale">Scale: —</div>
+  </div>
+
+  <!-- ✅ Custom horizontal scrollbar -->
+  <div class="xs-hscroll" id="xsHScroll">
+    <div class="label">↔</div>
+    <input type="range" id="xsHRange" min="0" max="1000" value="500" />
+  </div>
+
+  <div class="xs-error" id="xsErr"></div>
+</div>
+
+<!-- Annotation Card -->
+<div class="anno" id="anno">
+  <div class="card" id="annoCard">
+    <div class="hd" id="annoHeader">
+      <div>
+        <div class="title" id="annoTitle">—</div>
+        <div class="sub" id="annoSub">—</div>
+      </div>
+      <div class="pill" id="annoPill">—</div>
+    </div>
+    <div class="img">
+      <div class="svgwrap" id="annoSvgWrap"></div>
+    </div>
+
+    <!-- ✅ 保留 DOM 但会被 .anno .ft{display:none} 隐藏，防止你别的地方引用报错 -->
+    <div class="ft">
+      <div class="link" id="annoOpen">Open</div>
+    </div>
+  </div>
+</div>
+
+<!-- Knowledge Panel -->
+<div class="panel" id="panel">
+  <div class="ph">
+    <div>
+      <div class="pt" id="panelTitle">—</div>
+      <div class="ps" id="panelSub">—</div>
+    </div>
+    <button class="close" id="panelClose">✕</button>
+  </div>
+  <div class="body">
+    <div class="bigimg">
+      <div class="svgwrap" id="panelSvgWrap"></div>
+    </div>
+    <div class="text" id="panelText">—</div>
+    <div class="meta" id="panelMeta">—</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const MASTER_SVG = "grain_vector_3panel.svg";
+  const INDEX_JSON = "burrow_index.json";
+
+  const CRAB_SVG_FILES = {
+    "Sesarma dehaani": "无齿相手蟹.svg",
+    "Helice tridens": "天津厚蟹.svg",
+    "Macrophthalmus japonicus": "日本大眼蟹.svg",
+    "Uca arcuata": "弧边招潮蟹.svg",
+  };
+
+  const GROUP_KEYS = {
+    "Macrophthalmus japonicus": ["日本大眼蟹1","日本大眼蟹2","日本大眼蟹3","日本大眼蟹4","日本大眼蟹5","日本大眼蟹6"],
+    "Uca arcuata": ["弧边招潮蟹1","弧边招潮蟹2","弧边招潮蟹3","弧边招潮蟹4","弧边招潮蟹5","弧边招潮蟹6","弧边招潮蟹7","弧边招潮蟹8"],
+    "Sesarma dehaani": ["无齿相手蟹1","无齿相手蟹2","无齿相手蟹3","无齿相手蟹4","无齿相手蟹5"],
+    "Helice tridens": ["天津厚蟹1","天津厚蟹2","天津厚蟹3","天津厚蟹4","天津厚蟹5","天津厚蟹6","天津厚蟹7","天津厚蟹8","天津厚蟹9"],
+  };
+
+  const DISPLAY_TO_SCI = {
+    "Sentinel Crab": "Macrophthalmus japonicus",
+    "Fiddler Crab": "Uca arcuata",
+    "Red-clawed Crab": "Sesarma dehaani",
+    "Mud Crab": "Helice tridens",
+  };
+
+  function parseKey(key){
+    const m = String(key||"").match(/^(.*?)(\d+)$/);
+    if(!m) return { species: String(key||""), n: null };
+    return { species: m[1], n: parseInt(m[2],10) };
+  }
+
+  function annoFileFromKey(key){
+    const { species, n } = parseKey(key);
+    if(!n) return `${species}注释.svg`;
+    return `${species}注释${n}.svg`;
+  }
+  function annoUrlFromKey(key){
+    return `./annotations/${encodeURI(annoFileFromKey(key))}`;
+  }
+
+  const CN_TO_EN = {
+    "日本大眼蟹": "Japanese Big-eyed Crab",
+    "弧边招潮蟹": "Arc-edged Fiddler Crab",
+    "无齿相手蟹": "Toothless Sentinel Crab",
+    "天津厚蟹": "Tianjin Thick Crab",
+  };
+
+  function displayTitle(key, lang){
+    const { species, n } = parseKey(key);
+    if(lang === "zh") return `${species}${n ?? ""}`;
+    const en = CN_TO_EN[species] || species;
+    return `${en}${n ? " " + n : ""}`;
+  }
+
+  function panelMetaText(lang, key, bb){
+    const file = annoFileFromKey(key);
+    if(lang === "zh"){
+      return `Key：${key}\nBBox：${bb.x.toFixed(1)}, ${bb.y.toFixed(1)}  ${bb.w.toFixed(1)}×${bb.h.toFixed(1)}\n注释图：${file}`;
+    }
+    return `Key: ${key}\nBBox: ${bb.x.toFixed(1)}, ${bb.y.toFixed(1)}  ${bb.w.toFixed(1)}×${bb.h.toFixed(1)}\nAnnotation: ${file}`;
+  }
+
+  const I18N = {
+    zh: {
+      fitAll: "Fit",
+      random: "Random",
+      open: "打开",
+      back: "返回",
+      speciesPrefix: "剖面",
+      cardSub: (key) => `注释：${annoFileFromKey(key)}`,
+      panelText:
+        "这里是知识卡片内容区（占位）。你之后可以把每个 burrow 的深度/直径/结构描述写进一个 JSON，然后在这里按 key 显示对应文本与交互。",
+    },
+    en: {
+      fitAll: "Fit",
+      random: "Random",
+      open: "Open",
+      back: "Back",
+      speciesPrefix: "Cross-section",
+      cardSub: (key) => `Annotation: ${annoFileFromKey(key)}`,
+      panelText:
+        "This is a placeholder knowledge card. Later you can load per-burrow metadata from a JSON (depth/diameter/structure), and render the corresponding narrative + interactions here.",
+    }
+  };
+
+  const xsViewport = document.getElementById("xsViewport");
+  const xsWorld = document.getElementById("xsWorld");
+  const xsGrain = document.getElementById("xsGrain");
+  const xsCrabs = document.getElementById("xsCrabs");
+  const xsOverlay = document.getElementById("xsOverlay");
+  const xsMask  = document.getElementById("xsMask");
+  const xsTitle = document.getElementById("xsTitle");
+  const xsTip   = document.getElementById("xsTip");
+  const xsScale = document.getElementById("xsScale");
+  const xsFitBtn = document.getElementById("xsFitBtn");
+  const xsRandomBtn = document.getElementById("xsRandomBtn");
+  const xsErr = document.getElementById("xsErr");
+  const langBtn = document.getElementById("langBtn");
+  const backBtn = document.getElementById("backBtn");
+
+  const xsHScroll = document.getElementById("xsHScroll");
+  const xsHRange  = document.getElementById("xsHRange");
+
+  const anno = document.getElementById("anno");
+  const annoTitle = document.getElementById("annoTitle");
+  const annoSub = document.getElementById("annoSub");
+  const annoPill = document.getElementById("annoPill");
+  const annoOpen = document.getElementById("annoOpen"); // kept but hidden
+  const annoCard = document.getElementById("annoCard");
+  const annoHeader = document.getElementById("annoHeader");
+  const annoSvgWrap = document.getElementById("annoSvgWrap");
+
+  const panel = document.getElementById("panel");
+  const panelTitle = document.getElementById("panelTitle");
+  const panelSub = document.getElementById("panelSub");
+  const panelSvgWrap = document.getElementById("panelSvgWrap");
+  const panelText = document.getElementById("panelText");
+  const panelMeta = document.getElementById("panelMeta");
+  const panelClose = document.getElementById("panelClose");
+
+  const xsState = {
+    scale: 1, tx: 0, ty: 0,
+    minScale: .2, maxScale: 60,
+    mx: 0, my: 0, flashlightR: 200,
+    currentSci: "Macrophthalmus japonicus",
+    currentKey: null,
+    index: null,
+    indexList: [],
+    vb: {x:0,y:0,w:1000,h:1000},
+    lang: "zh",
+    highlightEl: null,
+    hoverKey: null,
+    svgCache: new Map(),
+    annoLocked: false,
+    annoLockedPos: null,
+    lastShownKey: null,
+
+    crabSvgText: null,
+    crabs: [],
+    lastT: null,
+    burrowBB: null,
+    track: null,
+    trackLens: null,
+    trackTotal: 0,
+
+    mask: { key:null, canvas:null, ctx:null, w:0, h:0, vb:null },
+    panBounds: { minTx: 0, maxTx: 0, minTy: 0, maxTy: 0 }
+  };
+
+  function getQueryParam(name){
+    const q = new URLSearchParams(location.search);
+    const v = q.get(name);
+    if(!v) return null;
+    return decodeURIComponent(v).trim();
+  }
+  function getQueryCrab(){ return getQueryParam("crab"); }
+  function getQueryKey(){ return getQueryParam("key"); }
+
+  function normalizeSciOrDisplay(s){
+    if(!s) return null;
+    if(GROUP_KEYS[s]) return s;
+    if(DISPLAY_TO_SCI[s]) return DISPLAY_TO_SCI[s];
+    return s;
+  }
+
+  backBtn.addEventListener("click", ()=>{
+    const crab = getQueryCrab();
+    const url = crab
+      ? `macro_meso.html?view=meso&crab=${encodeURIComponent(crab)}`
+      : `macro_meso.html?view=meso`;
+    location.href = url;
+  });
+
+  const measureHost = document.createElement("div");
+  measureHost.style.position = "fixed";
+  measureHost.style.left = "-99999px";
+  measureHost.style.top = "-99999px";
+  measureHost.style.width = "1px";
+  measureHost.style.height = "1px";
+  measureHost.style.overflow = "hidden";
+  measureHost.style.opacity = "0";
+  document.body.appendChild(measureHost);
+
+  function showError(msg){
+    xsErr.style.display = 'block';
+    xsErr.textContent = msg;
+  }
+  function clearError(){
+    xsErr.style.display = 'none';
+    xsErr.textContent = '';
+  }
+
+  async function loadText(url){
+    const r = await fetch(url);
+    if(!r.ok) throw new Error(`Fetch failed: ${url} (${r.status})`);
+    return r.text();
+  }
+  async function loadJSON(url){
+    const r = await fetch(url);
+    if(!r.ok) throw new Error(`Fetch failed: ${url} (${r.status})`);
+    return r.json();
+  }
+  async function loadSvgCached(url){
+    if(xsState.svgCache.has(url)) return xsState.svgCache.get(url);
+    const t = await loadText(url);
+    xsState.svgCache.set(url, t);
+    return t;
+  }
+  async function loadCrabSvgForSci(sci){
+    const file = CRAB_SVG_FILES[sci];
+    if(!file) return null;
+    const url = `./${encodeURI(file)}`;
+    return await loadSvgCached(url);
+  }
+
+  function getViewBox(svgEl){
+    const vb = svgEl.viewBox && svgEl.viewBox.baseVal;
+    if(vb && vb.width && vb.height){
+      return {x:vb.x, y:vb.y, w:vb.width, h:vb.height};
+    }
+    const w = parseFloat(svgEl.getAttribute('width')||'1000') || 1000;
+    const h = parseFloat(svgEl.getAttribute('height')||'1000') || 1000;
+    return {x:0,y:0,w,h};
+  }
+
+  function updateMinScaleFitToWidth(){
+    const vw = xsViewport.clientWidth || window.innerWidth;
+    const vb = xsState.vb;
+    const minS = vw / vb.w;
+    xsState.minScale = Math.max(0.0001, minS);
+    if(xsState.scale < xsState.minScale){
+      xsState.scale = xsState.minScale;
+    }
+  }
+
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+  function computePanBounds(){
+    const vw = xsViewport.clientWidth;
+    const vh = xsViewport.clientHeight;
+    const vb = xsState.vb;
+
+    const scaledW = vb.w * xsState.scale;
+    const scaledH = vb.h * xsState.scale;
+
+    let minTx, maxTx;
+    if(scaledW > vw){
+      minTx = vw - scaledW;
+      maxTx = 0;
+    }else{
+      const cx = (vw - scaledW) / 2;
+      minTx = maxTx = cx;
+    }
+
+    let minTy, maxTy;
+    if(scaledH > vh){
+      minTy = vh - scaledH;
+      maxTy = 0;
+    }else{
+      const cy = (vh - scaledH) / 2;
+      minTy = maxTy = cy;
+    }
+
+    xsState.panBounds = {minTx,maxTx,minTy,maxTy};
+  }
+
+  function clampPan(){
+    computePanBounds();
+    const b = xsState.panBounds;
+    xsState.tx = clamp(xsState.tx, b.minTx, b.maxTx);
+    xsState.ty = clamp(xsState.ty, b.minTy, b.maxTy);
+  }
+
+  function updateHScrollUI(){
+    const vw = xsViewport.clientWidth;
+    const vb = xsState.vb;
+    const scaledW = vb.w * xsState.scale;
+
+    if(scaledW <= vw + 0.5){
+      xsHScroll.style.display = "none";
+      return;
+    }
+    xsHScroll.style.display = "flex";
+
+    const b = xsState.panBounds;
+    const t = (xsState.tx - b.minTx) / (b.maxTx - b.minTx);
+    const v = Math.round(t * 1000);
+    if(!xsHRange._dragging) xsHRange.value = String(v);
+  }
+
+  function applyTransform(){
+    clampPan();
+    xsWorld.style.transform = `translate(${xsState.tx}px,${xsState.ty}px) scale(${xsState.scale})`;
+    xsScale.textContent = `Scale: ${xsState.scale.toFixed(2)}×`;
+    updateHScrollUI();
+  }
+
+  xsHRange.addEventListener("pointerdown", ()=>{ xsHRange._dragging = true; });
+  window.addEventListener("pointerup", ()=>{ xsHRange._dragging = false; });
+  xsHRange.addEventListener("input", ()=>{
+    const b = xsState.panBounds;
+    const t = (parseInt(xsHRange.value,10) || 0) / 1000;
+    xsState.tx = b.minTx + t * (b.maxTx - b.minTx);
+    applyTransform();
+  });
+
+  function fitToBBox(bb, pad=40){
+    const vw = xsViewport.clientWidth;
+    const vh = xsViewport.clientHeight;
+    if(!vw || !vh) return;
+
+    const bx = bb.x - pad;
+    const by = bb.y - pad;
+    const bw = bb.w + pad*2;
+    const bh = bb.h + pad*2;
+
+    const s = Math.min(vw / bw, vh / bh);
+    xsState.scale = Math.max(xsState.minScale, Math.min(xsState.maxScale, s));
+
+    const cx = bx + bw/2;
+    const cy = by + bh/2;
+    xsState.tx = (vw/2) - (cx * xsState.scale);
+    xsState.ty = (vh/2) - (cy * xsState.scale);
+
+    applyTransform();
+  }
+
+  function setTip(key, bb){
+    xsTip.innerHTML = `Key: ${key || "—"}<br/>BBox: ${bb ? `${bb.x.toFixed(1)},${bb.y.toFixed(1)} ${bb.w.toFixed(1)}×${bb.h.toFixed(1)}` : "—"}`;
+  }
+
+  function buildIndexList(index){
+    const list = [];
+    for(const [key, bb] of Object.entries(index)){
+      const cx = bb.x + bb.w/2;
+      const cy = bb.y + bb.h/2;
+      list.push({ key, bb, cx, cy, area: bb.w * bb.h });
+    }
+    list.sort((a,b)=>a.area - b.area);
+    xsState.indexList = list;
+  }
+
+  function screenToWorld(sx, sy){
+    return { x: (sx - xsState.tx) / xsState.scale, y: (sy - xsState.ty) / xsState.scale };
+  }
+
+  function findKeyAtWorldPoint(wx, wy){
+    for(const item of xsState.indexList){
+      const bb = item.bb;
+      if(wx >= bb.x && wx <= (bb.x + bb.w) && wy >= bb.y && wy <= (bb.y + bb.h)){
+        return item.key;
+      }
+    }
+    return null;
+  }
+
+  function ensureOverlay(vb){
+    xsOverlay.innerHTML = `
+      <svg id="ovSvg" width="${vb.w}" height="${vb.h}" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" preserveAspectRatio="xMinYMin meet">
+        <rect id="hl" class="xs-highlight" x="0" y="0" width="0" height="0"></rect>
+      </svg>
+    `;
+    xsState.highlightEl = xsOverlay.querySelector("#hl");
+  }
+
+  function setHighlightByKey(key, on){
+    if(!xsState.highlightEl || !xsState.index) return;
+    if(!key || !xsState.index[key]){
+      xsState.highlightEl.classList.remove("on");
+      return;
+    }
+    const bb = xsState.index[key];
+    xsState.highlightEl.setAttribute("x", bb.x);
+    xsState.highlightEl.setAttribute("y", bb.y);
+    xsState.highlightEl.setAttribute("width", bb.w);
+    xsState.highlightEl.setAttribute("height", bb.h);
+    if(on) xsState.highlightEl.classList.add("on");
+    else xsState.highlightEl.classList.remove("on");
+  }
+
+  function updateMask(){
+    xsMask.style.setProperty("--mx", xsState.mx+"px");
+    xsMask.style.setProperty("--my", xsState.my+"px");
+    xsMask.style.setProperty("--r", xsState.flashlightR+"px");
+  }
+
+  function parseViewBoxFromSvgText(svgText){
+    const m = String(svgText||"").match(/viewBox="([\d\.\-eE]+)\s+([\d\.\-eE]+)\s+([\d\.\-eE]+)\s+([\d\.\-eE]+)"/);
+    if(m){
+      return {x:parseFloat(m[1]), y:parseFloat(m[2]), w:parseFloat(m[3]), h:parseFloat(m[4])};
+    }
+    return {x:0,y:0,w:1000,h:1000};
+  }
+
+  async function buildMaskFromAnnotationSvg(key){
+    const url = annoUrlFromKey(key);
+    const svgText = await loadSvgCached(url);
+    const vb = parseViewBoxFromSvgText(svgText);
+
+    const TARGET_W = 1200;
+    const scale = TARGET_W / vb.w;
+    const w = Math.max(500, Math.round(vb.w * scale));
+    const h = Math.max(500, Math.round(vb.h * scale));
+
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const ctx = c.getContext("2d", { willReadFrequently:true });
+
+    const blob = new Blob([svgText], {type:"image/svg+xml"});
+    const imgUrl = URL.createObjectURL(blob);
+
+    await new Promise((resolve,reject)=>{
+      const img = new Image();
+      img.onload = ()=>{
+        ctx.clearRect(0,0,w,h);
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(imgUrl);
+        resolve();
+      };
+      img.onerror = (e)=>{ URL.revokeObjectURL(imgUrl); reject(e); };
+      img.src = imgUrl;
+    });
+
+    xsState.mask = { key, canvas:c, ctx, w, h, vb };
+  }
+
+  function clearCrabs(){
+    xsCrabs.innerHTML = "";
+    xsState.crabs = [];
+    xsState.track = null;
+    xsState.trackLens = null;
+    xsState.trackTotal = 0;
+    xsState.burrowBB = null;
+  }
+
+  async function spawnCrabsForKeyAndBBox(key, bb){
+    clearCrabs();
+    return;
+  }
+
+  function hideAnno(){
+    anno.classList.remove("show");
+    anno.style.display = "none";
+    annoSvgWrap.innerHTML = "";
+    xsState.hoverKey = null;
+    xsState.lastShownKey = null;
+    xsState.annoLocked = false;
+    xsState.annoLockedPos = null;
+    setHighlightByKey(null, false);
+  }
+
+  function circleIntersectsRect(cx, cy, r, rx, ry, rw, rh){
+    const px = Math.max(rx, Math.min(cx, rx + rw));
+    const py = Math.max(ry, Math.min(cy, ry + rh));
+    const dx = cx - px;
+    const dy = cy - py;
+    return (dx*dx + dy*dy) <= (r*r);
+  }
+
+  function worldToScreen(wx, wy){
+    return { x: wx * xsState.scale + xsState.tx, y: wy * xsState.scale + xsState.ty };
+  }
+
+  function placeAnnoAvoidFlashlight(key, bb){
+    if(xsState.annoLocked && xsState.annoLockedPos){
+      anno.style.left = xsState.annoLockedPos.left;
+      anno.style.top  = xsState.annoLockedPos.top;
+      return true;
+    }
+
+    const fx = xsState.mx;
+    const fy = xsState.my;
+    const R  = xsState.flashlightR;
+
+    const burrowCenter = worldToScreen(bb.x + bb.w/2, bb.y + bb.h/2);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    anno.style.display = "block";
+    anno.style.left = "0px";
+    anno.style.top  = "0px";
+    anno.classList.add("show");
+    const rect = anno.getBoundingClientRect();
+    const cw = rect.width;
+    const ch = rect.height;
+
+    const clamp2 = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    const gap = 18;
+    const yTarget = clamp2(burrowCenter.y - ch/2, 12, vh - ch - 12);
+
+    const candidates = [
+      { x: fx + R + gap, y: yTarget },
+      { x: fx - R - gap - cw, y: yTarget },
+      { x: clamp2(fx - cw/2, 12, vw - cw - 12), y: fy - R - gap - ch },
+      { x: clamp2(fx - cw/2, 12, vw - cw - 12), y: fy + R + gap },
+    ];
+
+    let chosen = null;
+    for(const c of candidates){
+      const x = clamp2(c.x, 12, vw - cw - 12);
+      const y = clamp2(c.y, 12, vh - ch - 12);
+
+      const intersects = circleIntersectsRect(fx, fy, R * 0.98, x, y, cw, ch);
+      if(!intersects){
+        chosen = {x,y};
+        break;
+      }
+    }
+
+    if(!chosen){
+      anno.classList.remove("show");
+      anno.style.display = "none";
+      return false;
+    }
+
+    anno.style.left = chosen.x + "px";
+    anno.style.top  = chosen.y + "px";
+    xsState.annoLockedPos = { left: anno.style.left, top: anno.style.top };
+    return true;
+  }
+
+  async function showAnnoForKey(key){
+    if(!key || !xsState.index || !xsState.index[key]) return hideAnno();
+    const bb = xsState.index[key];
+
+    if(xsState.annoLocked && xsState.lastShownKey === key){
+      anno.style.display = "block";
+      anno.classList.add("show");
+      return;
+    }
+
+    if(xsState.lastShownKey === key && !xsState.annoLocked){
+      const ok = placeAnnoAvoidFlashlight(key, bb);
+      if(!ok) return;
+      anno.style.display = "block";
+      anno.classList.add("show");
+      xsState.hoverKey = key;
+      return;
+    }
+
+    annoTitle.textContent = displayTitle(key, xsState.lang);
+    annoSub.textContent   = I18N[xsState.lang].cardSub(key);
+    annoPill.textContent  = xsState.currentSci || "—";
+
+    // ✅ 底栏被隐藏了，这里不需要再更新 annoOpen 文本
+
+    const url = annoUrlFromKey(key);
+    try{
+      const svgText = await loadSvgCached(url);
+      annoSvgWrap.innerHTML = svgText;
+      const svg = annoSvgWrap.querySelector("svg");
+      if(svg){
+        svg.setAttribute("preserveAspectRatio","xMidYMid meet");
+        svg.style.pointerEvents = "auto";
+      }
+    }catch(e){
+      annoSvgWrap.innerHTML = `<div style="padding:14px;color:rgba(255,255,255,.75);font-size:12px;line-height:1.5">
+        ❌ Missing annotation SVG<br/>
+        <span style="opacity:.8">${url}</span>
+      </div>`;
+    }
+
+    const ok = placeAnnoAvoidFlashlight(key, bb);
+    if(!ok) return;
+
+    xsState.hoverKey = key;
+    xsState.lastShownKey = key;
+    anno.classList.add("show");
+  }
+
+  async function openPanelForKey(key){
+    if(!key || !xsState.index || !xsState.index[key]) return;
+    const bb = xsState.index[key];
+
+    panelTitle.textContent = displayTitle(key, xsState.lang);
+    panelSub.textContent   = (xsState.lang === "zh")
+      ? `来自 master 的剖面定位（bbox）`
+      : `Located inside master (bbox-based)`;
+
+    const url = annoUrlFromKey(key);
+    try{
+      const svgText = await loadSvgCached(url);
+      panelSvgWrap.innerHTML = svgText;
+      const svg = panelSvgWrap.querySelector("svg");
+      if(svg){
+        svg.setAttribute("preserveAspectRatio","xMidYMid meet");
+        svg.style.pointerEvents = "auto";
+      }
+    }catch(e){
+      panelSvgWrap.innerHTML = `<div style="padding:14px;color:rgba(255,255,255,.75);font-size:12px;line-height:1.5">
+        ❌ Missing annotation SVG<br/>
+        <span style="opacity:.8">${url}</span>
+      </div>`;
+    }
+
+    panelText.textContent = I18N[xsState.lang].panelText;
+    panelMeta.textContent = panelMetaText(xsState.lang, key, bb);
+
+    panel.classList.add("show");
+  }
+
+  function closePanel(){ panel.classList.remove("show"); }
+  panelClose.addEventListener("click", closePanel);
+
+  function applyLang(){
+    langBtn.textContent = (xsState.lang === "zh") ? "EN" : "中文";
+    xsFitBtn.textContent = I18N[xsState.lang].fitAll;
+    xsRandomBtn.textContent = I18N[xsState.lang].random;
+    backBtn.textContent = I18N[xsState.lang].back;
+
+    if(xsState.currentKey){
+      xsTitle.textContent = `${I18N[xsState.lang].speciesPrefix} · ${displayTitle(xsState.currentKey, xsState.lang)}`;
+    }else{
+      xsTitle.textContent = I18N[xsState.lang].speciesPrefix;
+    }
+
+    if(anno.style.display !== "none" && xsState.hoverKey){
+      showAnnoForKey(xsState.hoverKey);
+    }
+    if(panel.classList.contains("show") && xsState.hoverKey){
+      openPanelForKey(xsState.hoverKey);
+    }
+  }
+
+  langBtn.addEventListener("click", ()=>{
+    xsState.lang = (xsState.lang === "zh") ? "en" : "zh";
+    applyLang();
+  });
+
+  function pickRandomKeyForSci(sci){
+    const list = GROUP_KEYS[sci];
+    if(!list || !list.length) return null;
+    return list[Math.floor(Math.random()*list.length)];
+  }
+
+  async function openByKey(key){
+    xsState.currentKey = key;
+    const idx = xsState.index;
+    if(!idx){
+      showError("Index not loaded. Please generate burrow_index.json with indexer.html first.");
+      return;
+    }
+    const entry = idx[key];
+    if(!entry){
+      const keys = Object.keys(idx);
+      showError(
+        `❌ Key not found in burrow_index.json\nKey: ${key}\nIndex key count: ${keys.length}\n\nTip: make sure you saved this exact key in indexer.html.`
+      );
+      return;
+    }
+    clearError();
+
+    xsTitle.textContent = `${I18N[xsState.lang].speciesPrefix} · ${displayTitle(key, xsState.lang)}`;
+    setTip(key, entry);
+
+    updateMinScaleFitToWidth();
+    fitToBBox(entry, 40);
+
+    try{ await buildMaskFromAnnotationSvg(key); }catch(e){}
+    await spawnCrabsForKeyAndBBox(key, entry);
+  }
+
+  async function openRandomFromSci(sci){
+    xsState.currentSci = sci;
+
+    try{ xsState.crabSvgText = await loadCrabSvgForSci(xsState.currentSci); }
+    catch(e){ xsState.crabSvgText = null; }
+
+    const key = pickRandomKeyForSci(sci);
+    if(!key){
+      showError(`No key list for sci: ${sci}`);
+      return;
+    }
+    await openByKey(key);
+  }
+
+  xsViewport.addEventListener("mousemove",(e)=>{
+    xsState.mx = e.clientX;
+    xsState.my = e.clientY;
+    updateMask();
+
+    if(xsState.annoLocked) return;
+
+    if(xsState.indexList.length){
+      const w = screenToWorld(xsState.mx, xsState.my);
+      const key = findKeyAtWorldPoint(w.x, w.y);
+      if(key) showAnnoForKey(key);
+      else hideAnno();
+    }
+  });
+
+  xsViewport.addEventListener("wheel",(e)=>{
+    e.preventDefault();
+    const rect = xsViewport.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+
+    updateMinScaleFitToWidth();
+
+    const oldScale = xsState.scale;
+    const factor = e.deltaY < 0 ? 1.1 : 0.9;
+    let newScale = oldScale * factor;
+    newScale = Math.max(xsState.minScale, Math.min(xsState.maxScale, newScale));
+
+    const worldX = (mx - xsState.tx) / oldScale;
+    const worldY = (my - xsState.ty) / oldScale;
+
+    xsState.scale = newScale;
+    xsState.tx = mx - worldX * newScale;
+    xsState.ty = my - worldY * newScale;
+
+    applyTransform();
+
+    if(xsState.hoverKey && !xsState.annoLocked) showAnnoForKey(xsState.hoverKey);
+  }, {passive:false});
+
+  let dragging = false;
+  let last = {x:0,y:0};
+  xsViewport.addEventListener('mousedown', (e)=>{
+    dragging = true;
+    xsViewport.classList.add('dragging');
+    last.x = e.clientX; last.y = e.clientY;
+  });
+  window.addEventListener('mouseup', ()=>{
+    dragging = false;
+    xsViewport.classList.remove('dragging');
+  });
+  window.addEventListener('mousemove', (e)=>{
+    if(!dragging) return;
+    const dx = e.clientX - last.x;
+    const dy = e.clientY - last.y;
+    last.x = e.clientX; last.y = e.clientY;
+    xsState.tx += dx;
+    xsState.ty += dy;
+    applyTransform();
+
+    if(xsState.hoverKey && !xsState.annoLocked) showAnnoForKey(xsState.hoverKey);
+  });
+
+  window.addEventListener("resize", ()=>{
+    updateMinScaleFitToWidth();
+    applyTransform();
+    if(xsState.hoverKey && !xsState.annoLocked) showAnnoForKey(xsState.hoverKey);
+  });
+
+  xsFitBtn.onclick = ()=>{
+    updateMinScaleFitToWidth();
+    xsState.scale = xsState.minScale;
+
+    const vw = xsViewport.clientWidth, vh = xsViewport.clientHeight;
+    const scaledW = xsState.vb.w * xsState.scale;
+    const scaledH = xsState.vb.h * xsState.scale;
+    xsState.tx = (vw - scaledW) / 2;
+    xsState.ty = (vh - scaledH) / 2;
+    applyTransform();
+
+    xsTitle.textContent = `${I18N[xsState.lang].speciesPrefix} · (All 28 in master)`;
+    setTip(null, {x:xsState.vb.x,y:xsState.vb.y,w:xsState.vb.w,h:xsState.vb.h});
+    hideAnno();
+    clearCrabs();
+  };
+
+  xsRandomBtn.onclick = async ()=>{
+    clearError();
+    await openRandomFromSci(xsState.currentSci);
+    hideAnno();
+  };
+
+  annoCard.addEventListener("mouseenter", ()=>{
+    xsState.annoLocked = true;
+    if(xsState.hoverKey){
+      xsState.annoLockedPos = { left: anno.style.left, top: anno.style.top };
+      setHighlightByKey(xsState.hoverKey, true);
+    }
+  });
+  annoCard.addEventListener("mouseleave", ()=>{
+    xsState.annoLocked = false;
+    setHighlightByKey(null, false);
+  });
+
+  // ✅ 底部 Open 已隐藏，不再绑定点击
+  // annoOpen.addEventListener("click", ...);
+
+  annoHeader.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    if(xsState.hoverKey) openPanelForKey(xsState.hoverKey);
+  });
+
+  (async()=>{
+    try{
+      xsGrain.innerHTML = await loadText(MASTER_SVG);
+      const svgEl = xsGrain.querySelector('svg');
+      if(!svgEl) throw new Error("MASTER SVG loaded but no <svg> found.");
+
+      const vb = getViewBox(svgEl);
+      xsState.vb = vb;
+
+      svgEl.setAttribute("width", vb.w);
+      svgEl.setAttribute("height", vb.h);
+      svgEl.style.width = vb.w + "px";
+      svgEl.style.height = vb.h + "px";
+      svgEl.style.display = "block";
+
+      xsCrabs.style.width = vb.w + "px";
+      xsCrabs.style.height = vb.h + "px";
+
+      ensureOverlay(vb);
+
+      xsState.index = await loadJSON(INDEX_JSON);
+      buildIndexList(xsState.index);
+
+      updateMinScaleFitToWidth();
+
+      const crabQ = getQueryCrab();
+      const sci0 = normalizeSciOrDisplay(crabQ) || "Macrophthalmus japonicus";
+      xsState.currentSci = GROUP_KEYS[sci0] ? sci0 : "Macrophthalmus japonicus";
+
+      try{ xsState.crabSvgText = await loadCrabSvgForSci(xsState.currentSci); }
+      catch(e){ xsState.crabSvgText = null; }
+
+      applyLang();
+
+      const keyQ = getQueryKey();
+      if(keyQ){
+        await openByKey(keyQ);
+      }else{
+        await openRandomFromSci(xsState.currentSci);
+      }
+
+    } catch(err){
+      showError(String(err));
+      xsTitle.textContent = "Cross-section · ERROR";
+    }
+  })();
+})();
+</script>
+</body>
+</html>
