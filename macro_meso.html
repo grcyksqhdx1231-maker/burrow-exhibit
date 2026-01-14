@@ -724,7 +724,7 @@
   };
 
   // ✅ 版本号：每次你改路径/资源，就加 1，避免历史 localStorage 干扰
-  const ASSET_VERSION = 'v3';
+  const ASSET_VERSION = 'v4';
 
   const STORAGE_KEY = 'crab_burrow_settings_' + ASSET_VERSION;
   const FILTER_KEY  = 'crab_burrow_filters_' + ASSET_VERSION;
@@ -732,12 +732,21 @@
   // ✅ 自动判断 macro_meso.html 在根目录还是子目录
   // 如果你的页面在根目录，BASE = './'
   // 如果在子目录（比如 /pages/macro_meso.html），BASE = '../'
-  const BASE = (location.pathname.split('/').pop() || '').toLowerCase().includes('macro_meso')
-    ? './'
-    : './';
+  function detectBase(){
+    if (location.protocol === 'file:') return './';
+    const seg = location.pathname.split('/').filter(Boolean);
+    // Project Pages: /burrow-exhibit/macro_meso.html  => base = "/burrow-exhibit/"
+    if (seg.length > 0) return '/' + seg[0] + '/';
+    return '/';
+  }
+  const BASE = detectBase();
+  
+  // 把任何相对资源都变成 “带 base 的绝对路径”
+  const asset = (p) => {
+    const cleaned = String(p || '').replace(/^\.\/+/, '').replace(/^\/+/, '');
+    return encodeURI(BASE + cleaned);
+  };
 
-  // ✅ 所有资源路径统一走 encodeURI，解决中文/空格路径问题
-  const asset = (p) => encodeURI(BASE + p.replace(/^\.\//, ''));
 
   // ✅ 第一次打开强制清旧版本（只清旧 key，不动别的站点数据）
   try{
@@ -789,7 +798,7 @@
       },
       [CrabType.MACRO]: {
         name: 'Macrophthalmus japonicus',
-        introImage: asset('图片2/Macrophthalmus_japonicus_日本大眼蟹.jpg')
+        introImage: asset('图片2/Macrophamus_japonicus_日本大眼蟹.jpg')
       },
     }
   };
