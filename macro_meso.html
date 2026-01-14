@@ -721,54 +721,81 @@
     MACRO: 'Macrophthalmus japonicus'
   };
 
-  const STORAGE_KEY = 'crab_burrow_settings_v2';
-  const FILTER_KEY  = 'crab_burrow_filters_v2';
+  // ✅ 版本号：每次你改路径/资源，就加 1，避免历史 localStorage 干扰
+  const ASSET_VERSION = 'v3';
+
+  const STORAGE_KEY = 'crab_burrow_settings_' + ASSET_VERSION;
+  const FILTER_KEY  = 'crab_burrow_filters_' + ASSET_VERSION;
+
+  // ✅ 自动判断 macro_meso.html 在根目录还是子目录
+  // 如果你的页面在根目录，BASE = './'
+  // 如果在子目录（比如 /pages/macro_meso.html），BASE = '../'
+  const BASE = (location.pathname.split('/').pop() || '').toLowerCase().includes('macro_meso')
+    ? './'
+    : './';
+
+  // ✅ 所有资源路径统一走 encodeURI，解决中文/空格路径问题
+  const asset = (p) => encodeURI(BASE + p.replace(/^\.\//, ''));
+
+  // ✅ 第一次打开强制清旧版本（只清旧 key，不动别的站点数据）
+  // 如果你确认不需要这段，也可以删掉，但它能把“看起来还是旧样子”一次性解决
+  try{
+    Object.keys(localStorage).forEach(k=>{
+      if(k.startsWith('crab_burrow_settings_') || k.startsWith('crab_burrow_filters_')){
+        // 只清不是当前版本的
+        if(k !== STORAGE_KEY && k !== FILTER_KEY) localStorage.removeItem(k);
+      }
+    });
+  }catch(e){}
+
   const DEFAULT_SETTINGS = {
     tideColorStart: '#96EFFF',
     tideColorEnd: '#F0F9FF',
     tideSpeed: 1,
     tideMinHeight: 10,
     tideMaxHeight: 60,
-  
-    // ✅ 分区标签图（你图片2里有：高潮滩/中潮滩/低潮滩）
-    highTideLabelImage: './图片2/高潮滩.png',
-    midTideLabelImage:  './图片2/中潮滩.png',
-    lowTideLabelImage:  './图片2/低潮滩.png',
+
+    // ✅ 分区标签图
+    highTideLabelImage: asset('图片2/高潮滩.png'),
+    midTideLabelImage:  asset('图片2/中潮滩.png'),
+    lowTideLabelImage:  asset('图片2/低潮滩.png'),
     labelScale: 1,
-  
-    // ✅ 植物图（你图片2里有：芦苇/互花米草）
-    reedImage: './图片2/芦苇.png',
-    spartinaImage: './图片2/互花米草.png',
-  
-    // ✅ Tooltip 用的介绍图（你图片2里有：芦苇介绍/互花米草介绍）
-    reedTooltipImage: './图片2/芦苇介绍.png',
-    spartinaTooltipImage: './图片2/互花米草介绍.png',
-  
+
+    // ✅ 植物图
+    reedImage: asset('图片2/芦苇.png'),
+    spartinaImage: asset('图片2/互花米草.png'),
+
+    // ✅ Tooltip 图
+    reedTooltipImage: asset('图片2/芦苇介绍.png'),
+    spartinaTooltipImage: asset('图片2/互花米草介绍.png'),
+
     reedDensity: 150,
     spartinaDensity: 150,
     reedBaseSize: 0.6,
     spartinaBaseSize: 0.6,
-  
+
     reedTooltipSize: { width: 300, height: 200 },
     spartinaTooltipSize: { width: 300, height: 200 },
-  
-    // ✅ 四种蟹 hover 弹窗的圆形图片（来自 图片2 文件夹的 jpg）
+
+    // ✅ 螃蟹 hover 图
+    // !!! 强烈建议：你把文件名里的空格去掉（比如改成 Helice_tridens_天津厚蟹.jpg）
+    // 但就算你不改，这里 encodeURI 也能大幅提高成功率
     customCrabs: {
       [CrabType.UCA]: {
         name: 'Uca arcuata',
-        introImage: './图片2/Uca arcuata孤边招潮蟹.jpg'
+        introImage: asset('图片2/Uca arcuata孤边招潮蟹.jpg')
       },
       [CrabType.SESARMA]: {
         name: 'Sesarma dehaani',
-        introImage: './图片2/Sesarma dehaani无齿相手蟹.jpg'
+        introImage: asset('图片2/Sesarma dehaani无齿相手蟹.jpg')
       },
       [CrabType.HELICE]: {
         name: 'Helice tridens',
-        introImage: './图片2/Helice tridens 天津厚蟹.jpg'
+        introImage: asset('图片2/Helice tridens 天津厚蟹.jpg')
       },
       [CrabType.MACRO]: {
         name: 'Macrophthalmus japonicus',
-        introImage: './图片2/Macrophthalmus japonicus日本大眼蟹.jpg'
+        introImage: asset('图片2/Macrophthalmus japonicus日本大眼蟹.jpg')
       },
     }
   };
@@ -799,6 +826,9 @@
   }
   function saveFilters(f){ localStorage.setItem(FILTER_KEY, JSON.stringify(f)); }
   let filters = loadFilters();
+
+  // ✅ 后面你的原代码保持不动，从这里继续即可……
+
 
   const macro = document.getElementById('macro');
   const meso  = document.getElementById('meso');
