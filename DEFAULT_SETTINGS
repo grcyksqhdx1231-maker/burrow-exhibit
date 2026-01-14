@@ -783,21 +783,22 @@
    customCrabs: {
     [CrabType.UCA]: {
       name: 'Uca arcuata',
-      introImage: './图片2/Uca arcuata弧边招潮蟹.jpg'
+      introImage: './Uca arcuata弧边招潮蟹.jpg'
     },
     [CrabType.SESARMA]: {
       name: 'Sesarma dehaani',
-      introImage: './图片2/Sesarma dehaani无齿相手.jpg'
+      introImage: './Sesarma dehaani无齿相手.jpg'
     },
     [CrabType.HELICE]: {
       name: 'Helice tridens',
-      introImage: './图片2/Helice tridens 天津厚蟹.jpg'
+      introImage: './Helice tridens 天津厚蟹.jpg'
     },
     [CrabType.MACRO]: {
       name: 'Macrophthalmus japonicus',
-      introImage: './图片2/Macrophthalmus japonicus日本大眼蟹.jpg'
+      introImage: './Macrophthalmus japonicus日本大眼蟹.jpg'
     }
   }
+
 
   };
 
