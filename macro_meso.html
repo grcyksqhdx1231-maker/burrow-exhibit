@@ -780,24 +780,25 @@
     // ✅ 螃蟹 hover 图
     // !!! 强烈建议：你把文件名里的空格去掉（比如改成 Helice_tridens_天津厚蟹.jpg）
     // 但就算你不改，这里 encodeURI 也能大幅提高成功率
-    customCrabs: {
-      [CrabType.UCA]: {
-        name: 'Uca arcuata',
-        introImage: './图片2/Uca arcuata孤边招潮蟹.jpg'
-      },
-      [CrabType.SESARMA]: {
-        name: 'Sesarma dehaani',
-        introImage: './图片2/Sesarma dehaani无齿相手.jpg'
-      },
-      [CrabType.HELICE]: {
-        name: 'Helice tridens',
-        introImage: './图片2/Helice tridens 天津厚蟹.jpg'
-      },
-      [CrabType.MACRO]: {
-        name: 'Macrophthalmus japonicus',
-        introImage: './图片2/Macrophthalmus japonicus日本大眼蟹.jpg'
-      },
+   customCrabs: {
+    [CrabType.UCA]: {
+      name: 'Uca arcuata',
+      introImage: './图片2/Uca arcuata弧边招潮蟹.jpg'
+    },
+    [CrabType.SESARMA]: {
+      name: 'Sesarma dehaani',
+      introImage: './图片2/Sesarma dehaani无齿相手.jpg'
+    },
+    [CrabType.HELICE]: {
+      name: 'Helice tridens',
+      introImage: './图片2/Helice tridens 天津厚蟹.jpg'
+    },
+    [CrabType.MACRO]: {
+      name: 'Macrophthalmus japonicus',
+      introImage: './图片2/Macrophthalmus japonicus日本大眼蟹.jpg'
     }
+  }
+
   };
 
   function safeParseJSON(s){ try{ return JSON.parse(s); } catch(e){ return null; } }
